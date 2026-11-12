@@ -84,7 +84,7 @@ async function loadProductionData(force = false) {
     return cachedData;
   }
 
-  const appsScriptUrl = process.env.APPS_SCRIPT_URL;
+  const appsScriptUrl = process.env.APPS_SCRIPT_URL || 'https://script.google.com/macros/s/AKfycbyZ8kQ8cJ9Et_H4WQV_rZJ5SPQGIeGFrRiXKWgubtaTZsUMJpQuyfqEVQz-jy4qmviVUA/exec';
 
   if (appsScriptUrl && appsScriptUrl.startsWith('http')) {
     try {
