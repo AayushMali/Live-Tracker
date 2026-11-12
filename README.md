@@ -1,29 +1,34 @@
 # AX Production — Internal Production Dashboard
 
-AX Production is a high-performance, dark-themed internal production monitoring web application engineered for team leads, reviewers, and management to track daily annotation output across all 4 production pods.
+AX Production is a high-performance, dark-themed internal production monitoring web application engineered for team leads, reviewers, and management to track daily annotation output and video minutes worked across all 4 production pods.
+
+- **Live Application**: [https://live-tracker-ochre.vercel.app/](https://live-tracker-ochre.vercel.app/)
+- **Comprehensive Production Guide**: [PRODUCTION_GUIDE.md](PRODUCTION_GUIDE.md)
+- **Team Access Passkey**: `ax2026`
 
 ---
 
 ## Key Features
 
 1. **Production Overview (Page 1)**:
-   - Real-time grand total of tasks completed across all pods.
+   - Real-time grand total of tasks completed AND video minutes worked across all pods.
    - Number of active pods and active annotators.
-   - Individual Pod production cards with task counts, active member counts, and percentage share progress bars.
+   - Individual Pod production cards with task counts, minute totals, active member counts, and percentage share progress bars.
    - Quick date selector switching between historical dates.
    - Automatic discrepancy detection comparing calculated annotator sums with source sheet Row 2 totals.
 
 2. **Annotator Production (Page 2)**:
    - Dedicated table listing actual annotator names (no email IDs).
    - Pod filter buttons (`All Pods`, `Pod 1`, `Pod 2`, `Pod 3`, `Pod 4`).
-   - Sorted in descending order by tasks completed.
+   - Sorted in descending order by tasks completed and minutes worked.
+   - **Video Minutes & 100-Minute Target Tracking**: Visual progress bar toward the 100-minute daily production target and a `✓ Target Met` indicator when $\ge 100$ min.
    - Live search filter by annotator name.
-   - Display toggle between Active Only (tasks > 0) and All Annotators.
-   - Selected Pod summary banner showing total tasks and active annotators.
+   - Display toggle between Active Only (tasks > 0), Zero Tasks (not started yet), and All Members.
+   - Selected Pod summary banner showing total tasks, total minutes, and active annotators.
 
 3. **Daily Production History (Page 3)**:
    - Date-wise breakdown grouped strictly by `Date → Pod → Individual Annotator`.
-   - Collapsible pod accordions showing each pod's active annotators and their exact task counts.
+   - Collapsible pod accordions showing each pod's active annotators, task counts, and video minutes.
    - Full 14-day chronological production history table with one-click date inspection.
    - Data integrity verification tags confirming 100% agreement with source sheets.
 
