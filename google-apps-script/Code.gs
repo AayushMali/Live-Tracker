@@ -1,17 +1,12 @@
 /**
- * AX Production — Google Apps Script Data Bridge
+ * AX Production — Google Apps Script Data Bridge (v2 - Tasks & Minutes)
  * 
  * Deployment Instructions:
- * 1. Open https://script.google.com and click "New Project"
- * 2. Name it "AX Production API Bridge"
- * 3. Paste this entire code into Code.gs
- * 4. Click "Deploy" -> "New deployment"
- * 5. Select type: "Web app"
- * 6. Set Description: "AX Production Live API"
- * 7. Set "Execute as": "Me"
- * 8. Set "Who has access": "Anyone" (or Anyone within your organization)
- * 9. Click "Deploy" and authorize access when prompted
- * 10. Copy the Web app URL and set it as APPS_SCRIPT_URL in your .env or Vercel Environment Variables
+ * 1. Open https://script.google.com and open your "AX Production API Bridge" project
+ * 2. Replace Code.gs with this entire code
+ * 3. Click "Deploy" -> "Manage deployments" -> Click Edit (pencil icon) on active deployment
+ * 4. Choose Version: "New version"
+ * 5. Click "Deploy"
  */
 
 const PODS = [
@@ -65,6 +60,7 @@ function fetchAllPodsData() {
     const row2 = values[1];
     
     // Task columns start from column Z (index 25)
+    // Minute columns are columns K..X (index 10..23) corresponding to (c - 15)
     const taskCols = [];
     for (let c = 25; c < row1.length; c++) {
       const header = row1[c];
@@ -72,22 +68,37 @@ function fetchAllPodsData() {
       const minDateVal = minColIdx >= 10 ? row1[minColIdx] : null;
 
       let isoDate = null;
-      if (minDateVal instanceof Date && !isNaN(minDateVal.getTime())) {
-        isoDate = Utilities.formatDate(minDateVal, "GMT+05:30", "yyyy-MM-dd");
-      } else if (header && typeof header === "string") {
-        const match = header.match(/(\d{1,2})\s+([A-Za-z]{3})/i);
-        if (match) {
-          const day = ("0" + match[1]).slice(-2);
-          const months = { jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06", jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12" };
-          const m = months[match[2].toLowerCase()];
-          if (m) isoDate = "2026-" + m + "-" + day;
+      const headerStr = String(header || "");
+      let match = headerStr.match(/(\d{1,2})\s+([A-Za-z]{3})/i);
+      
+      if (!match && minDateVal) {
+        if (minDateVal instanceof Date && !isNaN(minDateVal.getTime())) {
+          const day = ("0" + minDateVal.getDate()).slice(-2);
+          const month = ("0" + (minDateVal.getMonth() + 1)).slice(-2);
+          isoDate = "2026-" + month + "-" + day;
+        } else {
+          match = String(minDateVal).match(/(\d{1,2})\s+([A-Za-z]{3})/i);
         }
+      }
+      
+      if (match) {
+        const day = ("0" + match[1]).slice(-2);
+        const months = { jan: "01", feb: "02", mar: "03", apr: "04", may: "05", jun: "06", jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12" };
+        const m = months[match[2].toLowerCase()];
+        if (m) isoDate = "2026-" + m + "-" + day;
       }
 
       if (isoDate) {
         datesSet[isoDate] = true;
-        const r2Val = Number(row2[c]) || 0;
-        taskCols.push({ colIndex: c, date: isoDate, row2Total: r2Val });
+        const r2Tasks = Number(row2[c]) || 0;
+        const r2Minutes = minColIdx >= 10 ? (Number(row2[minColIdx]) || 0) : 0;
+        taskCols.push({
+          colIndex: c,
+          minColIndex: minColIdx,
+          date: isoDate,
+          row2Total: r2Tasks,
+          row2Minutes: r2Minutes
+        });
       }
     }
 
@@ -104,17 +115,21 @@ function fetchAllPodsData() {
       }
 
       const tasksByDate = {};
+      const minutesByDate = {};
       for (let t = 0; t < taskCols.length; t++) {
         const tCol = taskCols[t];
-        const count = Number(row[tCol.colIndex]) || 0;
-        tasksByDate[tCol.date] = count > 0 ? count : 0;
+        const taskCount = Number(row[tCol.colIndex]) || 0;
+        const minCount = tCol.minColIndex >= 0 ? (Number(row[tCol.minColIndex]) || 0) : 0;
+        tasksByDate[tCol.date] = taskCount > 0 ? taskCount : 0;
+        minutesByDate[tCol.date] = minCount > 0 ? minCount : 0;
       }
 
       annotators.push({
         id: email || ("ann_" + r),
         name: name,
         email: email,
-        tasksByDate: tasksByDate
+        tasksByDate: tasksByDate,
+        minutesByDate: minutesByDate
       });
     }
 
@@ -123,30 +138,35 @@ function fetchAllPodsData() {
     for (let t = 0; t < taskCols.length; t++) {
       const tCol = taskCols[t];
       const date = tCol.date;
-      let calculated = 0;
+      let calculatedTasks = 0;
+      let calculatedMinutes = 0;
       let active = 0;
 
       for (let a = 0; a < annotators.length; a++) {
-        const c = annotators[a].tasksByDate[date] || 0;
-        calculated += c;
-        if (c > 0) active++;
+        const tc = annotators[a].tasksByDate[date] || 0;
+        const mc = annotators[a].minutesByDate[date] || 0;
+        calculatedTasks += tc;
+        calculatedMinutes += mc;
+        if (tc > 0 || mc > 0) active++;
       }
 
-      const hasDiscrepancy = calculated !== tCol.row2Total;
+      const hasDiscrepancy = calculatedTasks !== tCol.row2Total;
       if (hasDiscrepancy) {
         result.discrepancies.push({
           podId: pod.id,
           podName: pod.name,
           date: date,
           sourceRow2Total: tCol.row2Total,
-          calculatedTotal: calculated
+          calculatedTotal: calculatedTasks
         });
       }
 
       summariesByDate[date] = {
         date: date,
-        totalTasks: calculated,
+        totalTasks: calculatedTasks,
         sourceRow2Total: tCol.row2Total,
+        totalMinutes: calculatedMinutes,
+        sourceRow2Minutes: tCol.row2Minutes,
         activeAnnotators: active,
         hasDiscrepancy: hasDiscrepancy
       };

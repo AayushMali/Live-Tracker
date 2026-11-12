@@ -6,6 +6,8 @@ export interface PodSummary {
   sheetId: string;
   totalTasks: number;
   sourceRow2Total: number;
+  totalMinutes?: number;
+  sourceRow2Minutes?: number;
   activeAnnotators: number;
   totalAnnotators: number;
   hasDiscrepancy: boolean;
@@ -17,6 +19,7 @@ export interface DiscrepancyInfo {
   date: string;
   sourceRow2Total: number;
   calculatedTotal: number;
+  difference?: number;
   message?: string;
 }
 
@@ -24,6 +27,7 @@ export interface ProductionOverview {
   date: string;
   humanDate: string;
   grandTotal: number;
+  grandTotalMinutes?: number;
   activePods: number;
   totalPods: number;
   activeAnnotators: number;
@@ -39,6 +43,9 @@ export interface AnnotatorItem {
   podId: number;
   podName: string;
   tasksCompleted: number;
+  minutesWorked?: number;
+  dailyTargetMinutes?: number;
+  targetMet?: boolean;
 }
 
 export interface AnnotatorResponse {
@@ -47,6 +54,8 @@ export interface AnnotatorResponse {
   podFilter: string;
   statusFilter?: 'active' | 'zero' | 'all';
   podTotalTasks: number;
+  podTotalMinutes?: number;
+  dailyTargetMinutes?: number;
   totalMembers?: number;
   activeAnnotators: number;
   zeroTaskAnnotators?: number;
@@ -67,16 +76,18 @@ export interface DailyProductionPod {
   podId: number;
   podName: string;
   totalTasks: number;
+  totalMinutes?: number;
   sourceRow2Total: number;
   hasDiscrepancy: boolean;
   activeAnnotators: number;
-  annotators: { name: string; tasks: number }[];
+  annotators: { name: string; tasks: number; minutes?: number }[];
 }
 
 export interface DailyProductionResponse {
   date: string;
   humanDate: string;
   grandTotal: number;
+  grandTotalMinutes?: number;
   activePods: number;
   grandActiveAnnotators: number;
   pods: DailyProductionPod[];

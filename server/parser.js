@@ -112,11 +112,21 @@ export async function parseAllPods(baseDir = path.resolve(__dirname, '../data/sh
       if (isoDate) {
         result.dates.add(isoDate);
         const row2Val = Number(r2.getCell(c).value) || 0;
+        let row2Min = 0;
+        if (minCol >= 11) {
+          const r2MinCell = r2.getCell(minCol).value;
+          if (typeof r2MinCell === 'number') row2Min = r2MinCell;
+          else if (r2MinCell && typeof r2MinCell === 'object' && typeof r2MinCell.result === 'number') row2Min = r2MinCell.result;
+          else if (r2MinCell && !isNaN(Number(r2MinCell))) row2Min = Number(r2MinCell);
+        }
+
         taskColumns.push({
           colIndex: c,
+          minColIndex: minCol,
           date: isoDate,
           header: typeof taskHeaderCell === 'string' ? taskHeaderCell : `${isoDate} tasks`,
-          row2Total: row2Val
+          row2Total: row2Val,
+          row2Minutes: row2Min
         });
       }
     }
@@ -146,7 +156,9 @@ export async function parseAllPods(baseDir = path.resolve(__dirname, '../data/sh
       }
 
       const tasksByDate = {};
+      const minutesByDate = {};
       for (const tCol of taskColumns) {
+        // Task count
         const cellVal = row.getCell(tCol.colIndex).value;
         let count = 0;
         if (typeof cellVal === 'number') {
@@ -158,13 +170,28 @@ export async function parseAllPods(baseDir = path.resolve(__dirname, '../data/sh
           count = Number(cellVal);
         }
         tasksByDate[tCol.date] = count > 0 ? count : 0;
+
+        // Minutes worked
+        let minVal = 0;
+        if (tCol.minColIndex >= 11) {
+          const mCell = row.getCell(tCol.minColIndex).value;
+          if (typeof mCell === 'number') minVal = mCell;
+          else if (mCell && typeof mCell === 'object') {
+            if (typeof mCell.result === 'number') minVal = mCell.result;
+            else if (!isNaN(Number(mCell.result))) minVal = Number(mCell.result);
+          } else if (typeof mCell === 'string' && !isNaN(Number(mCell))) {
+            minVal = Number(mCell);
+          }
+        }
+        minutesByDate[tCol.date] = minVal > 0 ? minVal : 0;
       }
 
       annotators.push({
         id: email || `annotator_${pod.id}_${r}`,
         name: name || `Annotator ${r}`,
         email,
-        tasksByDate
+        tasksByDate,
+        minutesByDate
       });
     }
 
@@ -173,12 +200,15 @@ export async function parseAllPods(baseDir = path.resolve(__dirname, '../data/sh
     for (const tCol of taskColumns) {
       const date = tCol.date;
       let calculatedTotal = 0;
+      let calculatedMinutes = 0;
       let activeAnnotatorCount = 0;
 
       for (const ann of annotators) {
         const count = ann.tasksByDate[date] || 0;
+        const minutes = ann.minutesByDate[date] || 0;
         calculatedTotal += count;
-        if (count > 0) activeAnnotatorCount++;
+        calculatedMinutes += minutes;
+        if (count > 0 || minutes > 0) activeAnnotatorCount++;
       }
 
       const discrepancy = calculatedTotal !== tCol.row2Total;
@@ -197,6 +227,8 @@ export async function parseAllPods(baseDir = path.resolve(__dirname, '../data/sh
         date,
         totalTasks: calculatedTotal,
         sourceRow2Total: tCol.row2Total,
+        totalMinutes: calculatedMinutes,
+        sourceRow2Minutes: tCol.row2Minutes,
         activeAnnotators: activeAnnotatorCount,
         hasDiscrepancy: discrepancy
       };

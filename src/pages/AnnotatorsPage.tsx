@@ -11,6 +11,8 @@ import {
   Sparkles,
   AlertCircle,
   UserX,
+  Clock,
+  Target,
 } from 'lucide-react';
 import { AnnotatorResponse } from '../types';
 
@@ -65,6 +67,7 @@ export const AnnotatorsPage: React.FC<AnnotatorsPageProps> = ({
 
   const totalMembers = data.totalMembers ?? (data.activeAnnotators + (data.zeroTaskAnnotators ?? 0));
   const zeroCount = data.zeroTaskAnnotators ?? Math.max(0, totalMembers - data.activeAnnotators);
+  const totalMinutes = data.podTotalMinutes ?? 0;
 
   return (
     <div className="space-y-6">
@@ -73,7 +76,7 @@ export const AnnotatorsPage: React.FC<AnnotatorsPageProps> = ({
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-[#F4F6FB]">Annotator Production</h2>
           <p className="text-xs text-[#9CA8BD] mt-1">
-            Individual task output for <span className="text-[#F4F6FB] font-medium">{data.humanDate}</span>
+            Individual tasks & minutes for <span className="text-[#F4F6FB] font-medium">{data.humanDate}</span> (Daily Target: 100 min)
           </p>
         </div>
 
@@ -99,7 +102,7 @@ export const AnnotatorsPage: React.FC<AnnotatorsPageProps> = ({
       </div>
 
       {/* Summary KPI Banner for Selected Pod */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Tasks for selected filter */}
         <div className="p-4 rounded-xl bg-[#20283D] border border-[#2A3650] flex items-center justify-between">
           <div>
@@ -120,6 +123,24 @@ export const AnnotatorsPage: React.FC<AnnotatorsPageProps> = ({
           </div>
         </div>
 
+        {/* Total Minutes Logged */}
+        <div className="p-4 rounded-xl bg-[#20283D] border border-[#2A3650] flex items-center justify-between">
+          <div>
+            <div className="text-[11px] font-semibold text-[#9CA8BD] uppercase tracking-wider">
+              Total Minutes Logged
+            </div>
+            <div className="mt-1 flex items-baseline space-x-2">
+              <span className="font-mono text-3xl font-extrabold text-[#5689FF]">
+                {totalMinutes.toLocaleString()}
+              </span>
+              <span className="text-xs text-[#9CA8BD]">mins</span>
+            </div>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-[#5689FF]/10 border border-[#5689FF]/20 flex items-center justify-center">
+            <Clock className="w-5 h-5 text-[#5689FF]" />
+          </div>
+        </div>
+
         {/* Active Annotators (Done Tasks) */}
         <div
           onClick={() => onSelectStatusFilter('active')}
@@ -131,20 +152,20 @@ export const AnnotatorsPage: React.FC<AnnotatorsPageProps> = ({
         >
           <div>
             <div className="text-[11px] font-semibold text-[#9CA8BD] uppercase tracking-wider flex items-center space-x-1.5">
-              <span>Completed Tasks</span>
+              <span>Completed</span>
               {statusFilter === 'active' && (
                 <span className="w-1.5 h-1.5 rounded-full bg-[#5689FF]"></span>
               )}
             </div>
             <div className="mt-1 flex items-baseline space-x-2">
-              <span className="font-mono text-3xl font-extrabold text-[#5689FF]">
+              <span className="font-mono text-3xl font-extrabold text-[#F4F6FB]">
                 {data.activeAnnotators}
               </span>
-              <span className="text-xs text-[#9CA8BD]">annotators</span>
+              <span className="text-xs text-[#9CA8BD]">members</span>
             </div>
           </div>
-          <div className="w-10 h-10 rounded-xl bg-[#5689FF]/10 border border-[#5689FF]/20 flex items-center justify-center">
-            <Users className="w-5 h-5 text-[#5689FF]" />
+          <div className="w-10 h-10 rounded-xl bg-[#2A3650] flex items-center justify-center">
+            <Users className="w-5 h-5 text-[#9CA8BD]" />
           </div>
         </div>
 
@@ -159,7 +180,7 @@ export const AnnotatorsPage: React.FC<AnnotatorsPageProps> = ({
         >
           <div>
             <div className="text-[11px] font-semibold text-[#9CA8BD] uppercase tracking-wider flex items-center space-x-1.5">
-              <span>Zero Tasks (Not Done)</span>
+              <span>Zero Tasks</span>
               {statusFilter === 'zero' && (
                 <span className="w-1.5 h-1.5 rounded-full bg-[#FF9B52]"></span>
               )}
@@ -168,7 +189,7 @@ export const AnnotatorsPage: React.FC<AnnotatorsPageProps> = ({
               <span className="font-mono text-3xl font-extrabold text-[#FF9B52]">
                 {zeroCount}
               </span>
-              <span className="text-xs text-[#9CA8BD]">annotators</span>
+              <span className="text-xs text-[#9CA8BD]">members</span>
             </div>
           </div>
           <div className="w-10 h-10 rounded-xl bg-[#FF9B52]/10 border border-[#FF9B52]/20 flex items-center justify-center">
@@ -248,49 +269,92 @@ export const AnnotatorsPage: React.FC<AnnotatorsPageProps> = ({
                 <th className="py-3.5 px-5">Annotator Name</th>
                 <th className="py-3.5 px-5">Pod</th>
                 <th className="py-3.5 px-5 text-right">Tasks Completed</th>
+                <th className="py-3.5 px-5 text-right">Minutes Worked</th>
+                <th className="py-3.5 px-5 text-right">Daily Target (100 min)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#2A3650]/40 text-sm">
               {filteredAnnotators.length > 0 ? (
-                filteredAnnotators.map((ann, idx) => (
-                  <tr
-                    key={ann.id || idx}
-                    className="hover:bg-[#191F30]/50 transition-colors group"
-                  >
-                    {/* Rank / Index */}
-                    <td className="py-3.5 px-5 font-mono text-xs text-[#9CA8BD] w-12">
-                      {idx + 1}
-                    </td>
+                filteredAnnotators.map((ann, idx) => {
+                  const minutes = ann.minutesWorked ?? 0;
+                  const targetMet = minutes >= 100;
+                  const progressPct = Math.min(Math.round((minutes / 100) * 100), 100);
 
-                    {/* Annotator Name */}
-                    <td className="py-3.5 px-5 font-medium text-[#F4F6FB] group-hover:text-[#9DDB00] transition-colors">
-                      {ann.name}
-                    </td>
+                  return (
+                    <tr
+                      key={ann.id || idx}
+                      className="hover:bg-[#191F30]/50 transition-colors group"
+                    >
+                      {/* Rank / Index */}
+                      <td className="py-3.5 px-5 font-mono text-xs text-[#9CA8BD] w-12">
+                        {idx + 1}
+                      </td>
 
-                    {/* Pod Name Badge */}
-                    <td className="py-3.5 px-5">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-[#5689FF]/10 text-[#5689FF] border border-[#5689FF]/20">
-                        {ann.podName}
-                      </span>
-                    </td>
+                      {/* Annotator Name */}
+                      <td className="py-3.5 px-5 font-medium text-[#F4F6FB] group-hover:text-[#9DDB00] transition-colors">
+                        {ann.name}
+                      </td>
 
-                    {/* Tasks Completed */}
-                    <td className="py-3.5 px-5 text-right">
-                      {ann.tasksCompleted > 0 ? (
-                        <span className="font-mono text-base font-bold text-[#9DDB00]">
-                          {ann.tasksCompleted}
+                      {/* Pod Name Badge */}
+                      <td className="py-3.5 px-5">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-[#5689FF]/10 text-[#5689FF] border border-[#5689FF]/20">
+                          {ann.podName}
                         </span>
-                      ) : (
-                        <span className="font-mono text-xs px-2 py-0.5 rounded bg-[#191F30] text-[#9CA8BD] border border-[#2A3650]">
-                          0 tasks
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))
+                      </td>
+
+                      {/* Tasks Completed */}
+                      <td className="py-3.5 px-5 text-right">
+                        {ann.tasksCompleted > 0 ? (
+                          <span className="font-mono text-base font-bold text-[#9DDB00]">
+                            {ann.tasksCompleted}
+                          </span>
+                        ) : (
+                          <span className="font-mono text-xs px-2 py-0.5 rounded bg-[#191F30] text-[#9CA8BD] border border-[#2A3650]">
+                            0
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Minutes Worked */}
+                      <td className="py-3.5 px-5 text-right">
+                        {minutes > 0 ? (
+                          <span className="font-mono text-sm font-semibold text-[#5689FF]">
+                            {minutes} <span className="text-[10px] text-[#9CA8BD] font-normal">min</span>
+                          </span>
+                        ) : (
+                          <span className="font-mono text-xs text-[#9CA8BD]">0 min</span>
+                        )}
+                      </td>
+
+                      {/* Daily Target Progress (100 min) */}
+                      <td className="py-3.5 px-5 text-right">
+                        <div className="flex items-center justify-end space-x-2.5">
+                          <div className="w-24 h-1.5 bg-[#191F30] rounded-full overflow-hidden hidden sm:block">
+                            <div
+                              className={`h-full rounded-full transition-all duration-300 ${
+                                targetMet ? 'bg-[#9DDB00]' : 'bg-[#5689FF]'
+                              }`}
+                              style={{ width: `${progressPct}%` }}
+                            />
+                          </div>
+                          {targetMet ? (
+                            <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-[#9DDB00]/10 text-[#9DDB00] border border-[#9DDB00]/30 whitespace-nowrap">
+                              <CheckCircle2 className="w-3 h-3" />
+                              <span>{minutes}m (Target Met)</span>
+                            </span>
+                          ) : (
+                            <span className="font-mono text-xs text-[#9CA8BD]">
+                              {minutes}/100m
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
-                  <td colSpan={4} className="py-12 text-center text-xs text-[#9CA8BD]">
+                  <td colSpan={6} className="py-12 text-center text-xs text-[#9CA8BD]">
                     {searchQuery
                       ? `No annotators found matching "${searchQuery}" in ${activeFilterName}`
                       : statusFilter === 'zero'
@@ -310,7 +374,7 @@ export const AnnotatorsPage: React.FC<AnnotatorsPageProps> = ({
             {filteredAnnotators.length === 1 ? '' : 's'} ({statusFilter === 'active' ? 'Completed Tasks' : statusFilter === 'zero' ? 'Zero Tasks' : 'All Members'})
           </span>
           <span className="font-mono text-[11px]">
-            Sorted descending by task count
+            Sorted descending by task count & minutes
           </span>
         </div>
       </div>

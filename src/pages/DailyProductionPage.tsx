@@ -9,6 +9,8 @@ import {
   AlertTriangle,
   History,
   TrendingUp,
+  Clock,
+  Sparkles,
 } from 'lucide-react';
 import { DailyProductionResponse, DateItem } from '../types';
 
@@ -111,10 +113,22 @@ export const DailyProductionPage: React.FC<DailyProductionPageProps> = ({
 
           <div>
             <div className="text-[11px] font-semibold text-[#9CA8BD] uppercase tracking-wider">
-              Active Pods
+              Total Video
             </div>
             <div className="flex items-baseline space-x-1.5 mt-0.5">
               <span className="font-mono text-2xl font-extrabold text-[#5689FF]">
+                {(data.grandTotalMinutes || 0).toLocaleString()}
+              </span>
+              <span className="text-xs text-[#9CA8BD]">mins</span>
+            </div>
+          </div>
+
+          <div>
+            <div className="text-[11px] font-semibold text-[#9CA8BD] uppercase tracking-wider">
+              Active Pods
+            </div>
+            <div className="flex items-baseline space-x-1.5 mt-0.5">
+              <span className="font-mono text-2xl font-extrabold text-[#FF9B52]">
                 {data.activePods}
               </span>
               <span className="text-xs text-[#9CA8BD]">/ 4</span>
@@ -126,7 +140,7 @@ export const DailyProductionPage: React.FC<DailyProductionPageProps> = ({
               Active Annotators
             </div>
             <div className="flex items-baseline space-x-1.5 mt-0.5">
-              <span className="font-mono text-2xl font-extrabold text-[#FF9B52]">
+              <span className="font-mono text-2xl font-extrabold text-[#F4F6FB]">
                 {data.grandActiveAnnotators}
               </span>
               <span className="text-xs text-[#9CA8BD]">members</span>
@@ -178,11 +192,16 @@ export const DailyProductionPage: React.FC<DailyProductionPageProps> = ({
                 </div>
 
                 <div className="flex items-center space-x-4">
-                  <div className="text-right">
+                  <div className="flex items-center space-x-3 text-right">
                     <div className="font-mono text-xl sm:text-2xl font-extrabold text-[#9DDB00]">
                       {pod.totalTasks}{' '}
                       <span className="text-xs text-[#9CA8BD] font-normal">tasks</span>
                     </div>
+                    {pod.totalMinutes !== undefined && (
+                      <div className="hidden sm:inline-flex items-center px-2 py-1 rounded bg-[#5689FF]/10 text-[#5689FF] font-mono text-xs font-bold border border-[#5689FF]/20">
+                        {pod.totalMinutes.toLocaleString()} mins
+                      </div>
+                    )}
                   </div>
                   <button className="p-1 rounded text-[#9CA8BD] hover:text-[#F4F6FB]">
                     {isExpanded ? (
@@ -199,24 +218,43 @@ export const DailyProductionPage: React.FC<DailyProductionPageProps> = ({
                 <div className="border-t border-[#2A3650]/60 bg-[#191F30]/40 p-4 sm:p-5">
                   {pod.annotators.length > 0 ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5">
-                      {pod.annotators.map((ann, idx) => (
-                        <div
-                          key={idx}
-                          className="p-3 rounded-xl bg-[#20283D] border border-[#2A3650] flex items-center justify-between"
-                        >
-                          <div className="truncate pr-2">
-                            <span className="text-xs font-medium text-[#F4F6FB] truncate block">
-                              {ann.name}
-                            </span>
-                            <span className="text-[10px] text-[#9CA8BD] font-mono">
-                              Annotator #{idx + 1}
-                            </span>
+                      {pod.annotators.map((ann, idx) => {
+                        const targetMet = (ann.minutes || 0) >= 100;
+                        return (
+                          <div
+                            key={idx}
+                            className={`p-3 rounded-xl bg-[#20283D] border transition-colors flex items-center justify-between ${
+                              targetMet ? 'border-[#9DDB00]/40' : 'border-[#2A3650]'
+                            }`}
+                          >
+                            <div className="truncate pr-2">
+                              <div className="flex items-center space-x-1.5 truncate">
+                                <span className="text-xs font-medium text-[#F4F6FB] truncate block">
+                                  {ann.name}
+                                </span>
+                                {targetMet && (
+                                  <span className="w-1.5 h-1.5 rounded-full bg-[#9DDB00] flex-shrink-0" title="Target Met (≥100 mins)" />
+                                )}
+                              </div>
+                              <span className="text-[10px] text-[#9CA8BD] font-mono">
+                                Annotator #{idx + 1}
+                              </span>
+                            </div>
+                            <div className="text-right flex-shrink-0">
+                              <div className="font-mono text-sm font-bold text-[#9DDB00]">
+                                {ann.tasks} <span className="text-[10px] text-[#9CA8BD] font-normal">tasks</span>
+                              </div>
+                              {ann.minutes !== undefined && ann.minutes > 0 && (
+                                <div className={`font-mono text-[11px] font-bold ${
+                                  targetMet ? 'text-[#9DDB00]' : 'text-[#5689FF]'
+                                }`}>
+                                  {ann.minutes}m
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          <div className="font-mono text-sm font-bold text-[#9DDB00] flex-shrink-0">
-                            {ann.tasks}
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="py-6 text-center text-xs text-[#9CA8BD]">
