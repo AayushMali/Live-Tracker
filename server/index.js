@@ -25,6 +25,57 @@ let fetchError = null;
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 /**
+ * Rigorous Discrepancy and Data Integrity Audit Engine
+ */
+function auditDiscrepancies(data) {
+  if (!data || !data.pods) return [];
+  const discrepancies = [];
+  const dates = data.sortedDates || data.allDates || [];
+
+  for (const date of dates) {
+    for (let p = 1; p <= 4; p++) {
+      const pod = data.pods[String(p)] || data.pods[p];
+      if (!pod) continue;
+
+      if (!pod.summariesByDate) pod.summariesByDate = {};
+      const summary = pod.summariesByDate[date];
+
+      let calculatedTotal = 0;
+      let activeCount = 0;
+      for (const ann of (pod.annotators || [])) {
+        const count = ann.tasksByDate?.[date] || 0;
+        calculatedTotal += count;
+        if (count > 0) activeCount++;
+      }
+
+      const sourceTotal = summary ? (Number(summary.sourceRow2Total) || 0) : 0;
+      const isMismatch = calculatedTotal !== sourceTotal;
+
+      if (isMismatch) {
+        discrepancies.push({
+          podId: pod.id,
+          podName: pod.name,
+          date,
+          sourceRow2Total: sourceTotal,
+          calculatedTotal,
+          difference: calculatedTotal - sourceTotal,
+          message: `Discrepancy detected in ${pod.name} on ${date}: Source Row 2 Total is ${sourceTotal}, but calculated annotator sum is ${calculatedTotal}`
+        });
+      }
+
+      if (summary) {
+        summary.hasDiscrepancy = isMismatch;
+        summary.totalTasks = calculatedTotal;
+        summary.activeAnnotators = activeCount;
+      }
+    }
+  }
+
+  data.discrepancies = discrepancies;
+  return discrepancies;
+}
+
+/**
  * Loads data from live Apps Script if configured, or falls back to verified sheet snapshot
  */
 async function loadProductionData(force = false) {
@@ -57,10 +108,12 @@ async function loadProductionData(force = false) {
           if (!cachedData.sortedDates && cachedData.allDates) {
             cachedData.sortedDates = cachedData.allDates;
           }
+          // Run independent discrepancy verification
+          auditDiscrepancies(cachedData);
           lastFetchedAt = Date.now();
           dataSourceMode = 'live_apps_script';
           fetchError = null;
-          console.log(`✅ Live Google Apps Script data synced successfully at ${new Date().toLocaleTimeString()}`);
+          console.log(`✅ Live Google Apps Script data synced and audited (Discrepancies: ${cachedData.discrepancies.length}) at ${new Date().toLocaleTimeString()}`);
           return cachedData;
         }
       }
@@ -72,11 +125,12 @@ async function loadProductionData(force = false) {
   // Load from local verified spreadsheets
   try {
     const data = await parseAllPods();
+    auditDiscrepancies(data);
     cachedData = data;
     lastFetchedAt = Date.now();
     dataSourceMode = 'verified_sheet_snapshot';
     fetchError = null;
-    console.log(`✅ Loaded verified sheet data snapshot (${data.sortedDates.length} dates) at ${new Date().toLocaleTimeString()}`);
+    console.log(`✅ Loaded verified sheet data snapshot (${data.sortedDates.length} dates, Discrepancies: ${data.discrepancies.length}) at ${new Date().toLocaleTimeString()}`);
     return cachedData;
   } catch (err) {
     fetchError = err.message;
@@ -111,6 +165,51 @@ app.get('/api/status', async (req, res) => {
       discrepancyCount: data ? data.discrepancies.length : 0,
       podsConfigured: POD_CONFIG.map(p => ({ id: p.id, name: p.name, sheetId: p.sheetId })),
       error: fetchError
+    });
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: err.message });
+  }
+});
+
+/**
+ * Data Integrity and Reconciliation Audit Report
+ */
+app.get('/api/integrity', async (req, res) => {
+  try {
+    const data = await loadProductionData();
+    const targetDate = req.query.date || data.sortedDates[0];
+
+    const podAudits = [];
+    let hasDateDiscrepancy = false;
+
+    for (let p = 1; p <= 4; p++) {
+      const pod = data.pods[String(p)] || data.pods[p];
+      if (!pod) continue;
+
+      const summary = pod.summariesByDate?.[targetDate] || { totalTasks: 0, sourceRow2Total: 0, hasDiscrepancy: false };
+      if (summary.hasDiscrepancy) hasDateDiscrepancy = true;
+
+      podAudits.push({
+        podId: pod.id,
+        podName: pod.name,
+        sheetId: pod.sheetId,
+        sourceRow2Total: summary.sourceRow2Total,
+        calculatedTotal: summary.totalTasks,
+        activeAnnotators: summary.activeAnnotators,
+        matches: summary.sourceRow2Total === summary.totalTasks,
+        difference: summary.totalTasks - summary.sourceRow2Total
+      });
+    }
+
+    res.json({
+      status: hasDateDiscrepancy ? 'discrepancy_detected' : 'verified',
+      date: targetDate,
+      totalPodsAudited: 4,
+      totalDatesAudited: data.sortedDates.length,
+      allDiscrepanciesCount: data.discrepancies.length,
+      allDiscrepancies: data.discrepancies,
+      podAudits,
+      lastAuditedAt: new Date(lastFetchedAt).toISOString()
     });
   } catch (err) {
     res.status(500).json({ status: 'error', message: err.message });

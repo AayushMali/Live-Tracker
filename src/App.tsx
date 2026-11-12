@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { AuthModal } from './components/AuthModal';
+import { IntegrityModal } from './components/IntegrityModal';
 import { OverviewPage } from './pages/OverviewPage';
 import { AnnotatorsPage } from './pages/AnnotatorsPage';
 import { DailyProductionPage } from './pages/DailyProductionPage';
@@ -34,6 +35,7 @@ export const App: React.FC = () => {
 
   // UI state
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
+  const [isIntegrityModalOpen, setIsIntegrityModalOpen] = useState<boolean>(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
     return !!localStorage.getItem('ax_prod_auth_token');
   });
@@ -199,6 +201,19 @@ export const App: React.FC = () => {
           onOpenMobileMenu={() => setIsMobileSidebarOpen(true)}
           isAuthenticated={isAuthenticated}
           onLogout={handleLogout}
+          discrepancyCount={overviewData?.discrepancies?.length || 0}
+          onOpenIntegrityModal={() => setIsIntegrityModalOpen(true)}
+        />
+
+        {/* Data Integrity Audit Modal */}
+        <IntegrityModal
+          isOpen={isIntegrityModalOpen}
+          onClose={() => setIsIntegrityModalOpen(false)}
+          selectedDate={selectedDate}
+          humanDate={overviewData?.humanDate || selectedDate}
+          pods={overviewData?.pods || []}
+          discrepancies={overviewData?.discrepancies || []}
+          lastUpdated={lastUpdated}
         />
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto">
@@ -224,6 +239,7 @@ export const App: React.FC = () => {
               overview={overviewData}
               isLoading={isLoading}
               onNavigateToPod={handleNavigateToPod}
+              onOpenIntegrityModal={() => setIsIntegrityModalOpen(true)}
             />
           )}
 

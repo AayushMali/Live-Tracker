@@ -22,6 +22,8 @@ interface HeaderProps {
   onOpenMobileMenu: () => void;
   isAuthenticated: boolean;
   onLogout: () => void;
+  discrepancyCount: number;
+  onOpenIntegrityModal: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -34,6 +36,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenMobileMenu,
   isAuthenticated,
   onLogout,
+  discrepancyCount,
+  onOpenIntegrityModal,
 }) => {
   const [isDateDropdownOpen, setIsDateDropdownOpen] = useState(false);
 
@@ -133,14 +137,31 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Right: Last Updated + Refresh Button + User Auth Status */}
-        <div className="flex items-center space-x-3">
+        {/* Right: Integrity Badge + Last Updated + Refresh Button + User Auth Status */}
+        <div className="flex items-center space-x-2 sm:space-x-3">
+          {/* Data Integrity Audit Button */}
+          <button
+            onClick={onOpenIntegrityModal}
+            className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all ${
+              discrepancyCount > 0
+                ? 'bg-orange-950/40 border-[#FF9B52] text-[#FF9B52] hover:bg-orange-900/50 animate-pulse'
+                : 'bg-[#20283D] border-[#2A3650] hover:border-[#9DDB00]/60 text-[#F4F6FB]'
+            }`}
+            title="Inspect Data Reconciliation and Discrepancy Checks"
+          >
+            <Shield className={`w-3.5 h-3.5 ${discrepancyCount > 0 ? 'text-[#FF9B52]' : 'text-[#9DDB00]'}`} />
+            <span className="hidden sm:inline">Integrity:</span>
+            <span className={`font-mono font-semibold ${discrepancyCount > 0 ? 'text-[#FF9B52]' : 'text-[#9DDB00]'}`}>
+              {discrepancyCount > 0 ? `${discrepancyCount} Alert` : '100% Match'}
+            </span>
+          </button>
+
           {/* Last Updated badge */}
-          <div className="hidden sm:flex items-center space-x-1.5 text-xs text-[#9CA8BD] font-mono bg-[#191F30] px-3 py-1.5 rounded-lg border border-[#2A3650]">
+          <div className="hidden md:flex items-center space-x-1.5 text-xs text-[#9CA8BD] font-mono bg-[#191F30] px-3 py-1.5 rounded-lg border border-[#2A3650]">
             <Clock className="w-3.5 h-3.5 text-[#5689FF]" />
-            <span>Updated {getRelativeTime(lastUpdated)}</span>
+            <span>{getRelativeTime(lastUpdated)}</span>
             <span className="text-[#9CA8BD]/40">•</span>
-            <span className="text-[10px] text-[#9CA8BD]">Auto: 5m</span>
+            <span className="text-[10px] text-[#9CA8BD]">5m</span>
           </div>
 
           {/* Manual Refresh Button */}

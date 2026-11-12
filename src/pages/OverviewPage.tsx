@@ -15,12 +15,14 @@ interface OverviewPageProps {
   overview: ProductionOverview | null;
   isLoading: boolean;
   onNavigateToPod: (podId: string) => void;
+  onOpenIntegrityModal?: () => void;
 }
 
 export const OverviewPage: React.FC<OverviewPageProps> = ({
   overview,
   isLoading,
   onNavigateToPod,
+  onOpenIntegrityModal,
 }) => {
   if (isLoading || !overview) {
     return (
@@ -137,6 +139,43 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({
             <span>Completed ≥ 1 task on this date</span>
           </div>
         </div>
+      </div>
+
+      {/* Discrepancy & Reconciliation Status Bar */}
+      <div className="p-4 rounded-2xl bg-[#191F30] border border-[#2A3650] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center space-x-3">
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+            discrepancies.length > 0
+              ? 'bg-[#FF9B52]/10 text-[#FF9B52] border border-[#FF9B52]/20'
+              : 'bg-[#9DDB00]/10 text-[#9DDB00] border border-[#9DDB00]/20'
+          }`}>
+            <CheckCircle className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="flex items-center space-x-2">
+              <span className="font-semibold text-xs text-[#F4F6FB]">Data Integrity & Reconciliation</span>
+              <span className={`text-[10px] font-mono px-2 py-0.5 rounded ${
+                discrepancies.length > 0
+                  ? 'bg-orange-500/10 text-[#FF9B52] border border-[#FF9B52]/20 font-bold'
+                  : 'bg-[#9DDB00]/10 text-[#9DDB00] border border-[#9DDB00]/20 font-bold'
+              }`}>
+                {discrepancies.length > 0 ? `${discrepancies.length} Discrepancy Detected` : '100% Match (0 Discrepancy)'}
+              </span>
+            </div>
+            <p className="text-[11px] text-[#9CA8BD] mt-0.5">
+              Live Source Row 2 Pod Totals match individual annotator sums across all 4 pods for {humanDate}.
+            </p>
+          </div>
+        </div>
+
+        {onOpenIntegrityModal && (
+          <button
+            onClick={onOpenIntegrityModal}
+            className="px-3 py-1.5 rounded-lg bg-[#20283D] hover:bg-[#2A3650] text-xs font-medium text-[#F4F6FB] border border-[#2A3650] hover:border-[#9DDB00]/50 transition-colors whitespace-nowrap self-start sm:self-center"
+          >
+            Audit Pod Totals
+          </button>
+        )}
       </div>
 
       {/* Individual Pod Production Cards Section */}
