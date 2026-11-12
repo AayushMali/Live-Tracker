@@ -9,6 +9,8 @@ import {
   Layers,
   ArrowUpDown,
   Sparkles,
+  AlertCircle,
+  UserX,
 } from 'lucide-react';
 import { AnnotatorResponse } from '../types';
 
@@ -17,8 +19,8 @@ interface AnnotatorsPageProps {
   isLoading: boolean;
   selectedPod: string;
   onSelectPod: (pod: string) => void;
-  showAll: boolean;
-  onToggleShowAll: (show: boolean) => void;
+  statusFilter: 'active' | 'zero' | 'all';
+  onSelectStatusFilter: (status: 'active' | 'zero' | 'all') => void;
 }
 
 export const AnnotatorsPage: React.FC<AnnotatorsPageProps> = ({
@@ -26,8 +28,8 @@ export const AnnotatorsPage: React.FC<AnnotatorsPageProps> = ({
   isLoading,
   selectedPod,
   onSelectPod,
-  showAll,
-  onToggleShowAll,
+  statusFilter,
+  onSelectStatusFilter,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -60,6 +62,9 @@ export const AnnotatorsPage: React.FC<AnnotatorsPageProps> = ({
 
   const activeFilterName =
     podFilters.find((f) => f.id === selectedPod)?.label || 'All Pods';
+
+  const totalMembers = data.totalMembers ?? (data.activeAnnotators + (data.zeroTaskAnnotators ?? 0));
+  const zeroCount = data.zeroTaskAnnotators ?? Math.max(0, totalMembers - data.activeAnnotators);
 
   return (
     <div className="space-y-6">
@@ -94,7 +99,7 @@ export const AnnotatorsPage: React.FC<AnnotatorsPageProps> = ({
       </div>
 
       {/* Summary KPI Banner for Selected Pod */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Total Tasks for selected filter */}
         <div className="p-4 rounded-xl bg-[#20283D] border border-[#2A3650] flex items-center justify-between">
           <div>
@@ -115,11 +120,21 @@ export const AnnotatorsPage: React.FC<AnnotatorsPageProps> = ({
           </div>
         </div>
 
-        {/* Active Annotators Count */}
-        <div className="p-4 rounded-xl bg-[#20283D] border border-[#2A3650] flex items-center justify-between">
+        {/* Active Annotators (Done Tasks) */}
+        <div
+          onClick={() => onSelectStatusFilter('active')}
+          className={`p-4 rounded-xl bg-[#20283D] border cursor-pointer transition-all hover:border-[#5689FF] ${
+            statusFilter === 'active'
+              ? 'border-[#5689FF] shadow-md shadow-[#5689FF]/10'
+              : 'border-[#2A3650]'
+          } flex items-center justify-between`}
+        >
           <div>
-            <div className="text-[11px] font-semibold text-[#9CA8BD] uppercase tracking-wider">
-              Active Annotators
+            <div className="text-[11px] font-semibold text-[#9CA8BD] uppercase tracking-wider flex items-center space-x-1.5">
+              <span>Completed Tasks</span>
+              {statusFilter === 'active' && (
+                <span className="w-1.5 h-1.5 rounded-full bg-[#5689FF]"></span>
+              )}
             </div>
             <div className="mt-1 flex items-baseline space-x-2">
               <span className="font-mono text-3xl font-extrabold text-[#5689FF]">
@@ -133,53 +148,94 @@ export const AnnotatorsPage: React.FC<AnnotatorsPageProps> = ({
           </div>
         </div>
 
-        {/* Filter / Toggle Bar */}
-        <div className="p-4 rounded-xl bg-[#20283D] border border-[#2A3650] flex items-center justify-between sm:col-span-2 lg:col-span-1">
+        {/* Zero Tasks Annotators (Not Started / Inactive) */}
+        <div
+          onClick={() => onSelectStatusFilter('zero')}
+          className={`p-4 rounded-xl bg-[#20283D] border cursor-pointer transition-all hover:border-[#FF9B52] ${
+            statusFilter === 'zero'
+              ? 'border-[#FF9B52] shadow-md shadow-[#FF9B52]/10'
+              : 'border-[#2A3650]'
+          } flex items-center justify-between`}
+        >
           <div>
-            <div className="text-[11px] font-semibold text-[#9CA8BD] uppercase tracking-wider">
-              Display Mode
+            <div className="text-[11px] font-semibold text-[#9CA8BD] uppercase tracking-wider flex items-center space-x-1.5">
+              <span>Zero Tasks (Not Done)</span>
+              {statusFilter === 'zero' && (
+                <span className="w-1.5 h-1.5 rounded-full bg-[#FF9B52]"></span>
+              )}
             </div>
-            <div className="mt-1 text-xs text-[#F4F6FB] font-medium">
-              {showAll ? 'Showing All Annotators' : 'Active Only (Tasks > 0)'}
+            <div className="mt-1 flex items-baseline space-x-2">
+              <span className="font-mono text-3xl font-extrabold text-[#FF9B52]">
+                {zeroCount}
+              </span>
+              <span className="text-xs text-[#9CA8BD]">annotators</span>
             </div>
           </div>
-          <button
-            onClick={() => onToggleShowAll(!showAll)}
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-[#191F30] border border-[#2A3650] hover:border-[#9DDB00]/50 text-xs font-medium text-[#9CA8BD] hover:text-[#F4F6FB] transition-colors"
-          >
-            {showAll ? (
-              <>
-                <EyeOff className="w-3.5 h-3.5 text-[#FF9B52]" />
-                <span>Hide Zero Tasks</span>
-              </>
-            ) : (
-              <>
-                <Eye className="w-3.5 h-3.5 text-[#9DDB00]" />
-                <span>Show All</span>
-              </>
-            )}
-          </button>
+          <div className="w-10 h-10 rounded-xl bg-[#FF9B52]/10 border border-[#FF9B52]/20 flex items-center justify-center">
+            <UserX className="w-5 h-5 text-[#FF9B52]" />
+          </div>
         </div>
       </div>
 
-      {/* Search Input Bar */}
-      <div className="relative">
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder={`Search ${activeFilterName} annotators by name...`}
-          className="w-full px-4 py-2.5 pl-10 rounded-xl bg-[#191F30] border border-[#2A3650] focus:border-[#9DDB00] text-sm text-[#F4F6FB] placeholder-[#9CA8BD]/50 focus:outline-none transition-colors"
-        />
-        <Search className="w-4 h-4 text-[#9CA8BD] absolute left-3.5 top-3" />
-        {searchQuery && (
+      {/* Filter Tabs Bar: Completed Tasks | Zero Tasks | All Members */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex items-center space-x-2 p-1 rounded-xl bg-[#191F30] border border-[#2A3650] self-start">
           <button
-            onClick={() => setSearchQuery('')}
-            className="absolute right-3 top-2.5 text-xs text-[#9CA8BD] hover:text-[#F4F6FB]"
+            onClick={() => onSelectStatusFilter('active')}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center space-x-2 ${
+              statusFilter === 'active'
+                ? 'bg-[#20283D] text-[#9DDB00] border border-[#9DDB00]/30 shadow-sm'
+                : 'text-[#9CA8BD] hover:text-[#F4F6FB]'
+            }`}
           >
-            Clear
+            <CheckCircle2 className="w-3.5 h-3.5 text-[#9DDB00]" />
+            <span>Completed Tasks ({data.activeAnnotators})</span>
           </button>
-        )}
+
+          <button
+            onClick={() => onSelectStatusFilter('zero')}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center space-x-2 ${
+              statusFilter === 'zero'
+                ? 'bg-[#20283D] text-[#FF9B52] border border-[#FF9B52]/30 shadow-sm'
+                : 'text-[#9CA8BD] hover:text-[#F4F6FB]'
+            }`}
+          >
+            <AlertCircle className="w-3.5 h-3.5 text-[#FF9B52]" />
+            <span>Zero Tasks ({zeroCount})</span>
+          </button>
+
+          <button
+            onClick={() => onSelectStatusFilter('all')}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center space-x-2 ${
+              statusFilter === 'all'
+                ? 'bg-[#20283D] text-[#5689FF] border border-[#5689FF]/30 shadow-sm'
+                : 'text-[#9CA8BD] hover:text-[#F4F6FB]'
+            }`}
+          >
+            <Users className="w-3.5 h-3.5 text-[#5689FF]" />
+            <span>All Members ({totalMembers})</span>
+          </button>
+        </div>
+
+        {/* Search Input Bar */}
+        <div className="relative flex-1 sm:max-w-xs">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={`Search annotator...`}
+            className="w-full px-4 py-2 pl-9 rounded-xl bg-[#191F30] border border-[#2A3650] focus:border-[#9DDB00] text-xs text-[#F4F6FB] placeholder-[#9CA8BD]/50 focus:outline-none transition-colors"
+          />
+          <Search className="w-3.5 h-3.5 text-[#9CA8BD] absolute left-3 top-2.5" />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-2 text-[10px] text-[#9CA8BD] hover:text-[#F4F6FB]"
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Production Annotators Table */}
@@ -219,8 +275,16 @@ export const AnnotatorsPage: React.FC<AnnotatorsPageProps> = ({
                     </td>
 
                     {/* Tasks Completed */}
-                    <td className="py-3.5 px-5 text-right font-mono text-base font-bold text-[#9DDB00]">
-                      {ann.tasksCompleted}
+                    <td className="py-3.5 px-5 text-right">
+                      {ann.tasksCompleted > 0 ? (
+                        <span className="font-mono text-base font-bold text-[#9DDB00]">
+                          {ann.tasksCompleted}
+                        </span>
+                      ) : (
+                        <span className="font-mono text-xs px-2 py-0.5 rounded bg-[#191F30] text-[#9CA8BD] border border-[#2A3650]">
+                          0 tasks
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))
@@ -229,6 +293,8 @@ export const AnnotatorsPage: React.FC<AnnotatorsPageProps> = ({
                   <td colSpan={4} className="py-12 text-center text-xs text-[#9CA8BD]">
                     {searchQuery
                       ? `No annotators found matching "${searchQuery}" in ${activeFilterName}`
+                      : statusFilter === 'zero'
+                      ? `All annotators in ${activeFilterName} completed tasks for ${data.humanDate}!`
                       : `No annotators with recorded tasks for ${data.humanDate} in ${activeFilterName}`}
                   </td>
                 </tr>
@@ -241,7 +307,7 @@ export const AnnotatorsPage: React.FC<AnnotatorsPageProps> = ({
         <div className="p-4 border-t border-[#2A3650] bg-[#191F30]/50 flex items-center justify-between text-xs text-[#9CA8BD]">
           <span>
             Showing <strong className="text-[#F4F6FB]">{filteredAnnotators.length}</strong> annotator
-            {filteredAnnotators.length === 1 ? '' : 's'}
+            {filteredAnnotators.length === 1 ? '' : 's'} ({statusFilter === 'active' ? 'Completed Tasks' : statusFilter === 'zero' ? 'Zero Tasks' : 'All Members'})
           </span>
           <span className="font-mono text-[11px]">
             Sorted descending by task count

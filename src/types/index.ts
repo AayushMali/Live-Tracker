@@ -45,8 +45,11 @@ export interface AnnotatorResponse {
   date: string;
   humanDate: string;
   podFilter: string;
+  statusFilter?: 'active' | 'zero' | 'all';
   podTotalTasks: number;
+  totalMembers?: number;
   activeAnnotators: number;
+  zeroTaskAnnotators?: number;
   totalListed: number;
   annotators: AnnotatorItem[];
   lastUpdated: string;

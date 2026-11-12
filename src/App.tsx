@@ -18,7 +18,7 @@ export const App: React.FC = () => {
   const [selectedDate, setSelectedDate] = useState<string>('2026-11-12');
   const [dates, setDates] = useState<DateItem[]>([]);
   const [selectedPodFilter, setSelectedPodFilter] = useState<string>('all');
-  const [showAllAnnotators, setShowAllAnnotators] = useState<boolean>(false);
+  const [annotatorStatusFilter, setAnnotatorStatusFilter] = useState<'active' | 'zero' | 'all'>('active');
 
   // Data states
   const [overviewData, setOverviewData] = useState<ProductionOverview | null>(null);
@@ -77,9 +77,9 @@ export const App: React.FC = () => {
   }, []);
 
   // Fetch data for Annotators Page
-  const fetchAnnotators = useCallback(async (date: string, pod: string, showAll: boolean) => {
+  const fetchAnnotators = useCallback(async (date: string, pod: string, status: 'active' | 'zero' | 'all') => {
     try {
-      const res = await fetch(`/api/annotators?date=${date}&pod=${pod}&showAll=${showAll}`);
+      const res = await fetch(`/api/annotators?date=${date}&pod=${pod}&status=${status}`);
       if (!res.ok) throw new Error(`Failed to fetch annotators (${res.status})`);
       const json: AnnotatorResponse = await res.json();
       setAnnotatorsData(json);
@@ -113,7 +113,7 @@ export const App: React.FC = () => {
       if (currentPage === 'overview') {
         await fetchOverview(selectedDate);
       } else if (currentPage === 'annotators') {
-        await fetchAnnotators(selectedDate, selectedPodFilter, showAllAnnotators);
+        await fetchAnnotators(selectedDate, selectedPodFilter, annotatorStatusFilter);
       } else if (currentPage === 'daily') {
         await fetchDaily(selectedDate);
       }
@@ -124,7 +124,7 @@ export const App: React.FC = () => {
     return () => {
       mounted = false;
     };
-  }, [currentPage, selectedDate, selectedPodFilter, showAllAnnotators, fetchDates, fetchOverview, fetchAnnotators, fetchDaily]);
+  }, [currentPage, selectedDate, selectedPodFilter, annotatorStatusFilter, fetchDates, fetchOverview, fetchAnnotators, fetchDaily]);
 
   // Automatic refresh every 5 minutes (300,000 ms)
   useEffect(() => {
@@ -134,7 +134,7 @@ export const App: React.FC = () => {
     }, 5 * 60 * 1000);
 
     return () => clearInterval(interval);
-  }, [currentPage, selectedDate, selectedPodFilter, showAllAnnotators]);
+  }, [currentPage, selectedDate, selectedPodFilter, annotatorStatusFilter]);
 
   // Manual refresh handler
   const handleRefresh = async (isManual = true) => {
@@ -145,7 +145,7 @@ export const App: React.FC = () => {
       if (currentPage === 'overview') {
         await fetchOverview(selectedDate);
       } else if (currentPage === 'annotators') {
-        await fetchAnnotators(selectedDate, selectedPodFilter, showAllAnnotators);
+        await fetchAnnotators(selectedDate, selectedPodFilter, annotatorStatusFilter);
       } else if (currentPage === 'daily') {
         await fetchDaily(selectedDate);
       }
@@ -233,8 +233,8 @@ export const App: React.FC = () => {
               isLoading={isLoading}
               selectedPod={selectedPodFilter}
               onSelectPod={(p) => setSelectedPodFilter(p)}
-              showAll={showAllAnnotators}
-              onToggleShowAll={(show) => setShowAllAnnotators(show)}
+              statusFilter={annotatorStatusFilter}
+              onSelectStatusFilter={(s) => setAnnotatorStatusFilter(s)}
             />
           )}
 

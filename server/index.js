@@ -223,11 +223,12 @@ app.get('/api/annotators', async (req, res) => {
     const data = await loadProductionData();
     const requestedDate = req.query.date || data.sortedDates[0];
     const podFilter = req.query.pod || 'all'; // 'all', '1', '2', '3', '4'
-    const showAll = req.query.showAll === 'true'; // Default is active only (tasks > 0)
+    const statusFilter = req.query.status || (req.query.showAll === 'true' ? 'all' : 'active'); // 'active', 'zero', 'all'
 
     let annotators = [];
     let podTotalTasks = 0;
     let activeAnnotatorCount = 0;
+    let totalMembersCount = 0;
 
     const podsToInclude = podFilter === 'all' 
       ? [1, 2, 3, 4] 
@@ -238,11 +239,17 @@ app.get('/api/annotators', async (req, res) => {
       if (!pod) continue;
 
       for (const ann of pod.annotators) {
+        totalMembersCount++;
         const tasks = ann.tasksByDate[requestedDate] || 0;
         podTotalTasks += tasks;
         if (tasks > 0) activeAnnotatorCount++;
 
-        if (showAll || tasks > 0) {
+        let matchesStatus = false;
+        if (statusFilter === 'all') matchesStatus = true;
+        else if (statusFilter === 'active') matchesStatus = tasks > 0;
+        else if (statusFilter === 'zero') matchesStatus = tasks === 0;
+
+        if (matchesStatus) {
           annotators.push({
             id: ann.id,
             name: ann.name,
@@ -262,12 +269,17 @@ app.get('/api/annotators', async (req, res) => {
       return a.name.localeCompare(b.name);
     });
 
+    const zeroTaskCount = totalMembersCount - activeAnnotatorCount;
+
     res.json({
       date: requestedDate,
       humanDate: formatHumanDate(requestedDate),
       podFilter,
+      statusFilter,
       podTotalTasks,
+      totalMembers: totalMembersCount,
       activeAnnotators: activeAnnotatorCount,
+      zeroTaskAnnotators: zeroTaskCount,
       totalListed: annotators.length,
       annotators,
       lastUpdated: new Date(lastFetchedAt).toISOString()
