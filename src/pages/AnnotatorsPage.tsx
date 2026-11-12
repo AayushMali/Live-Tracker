@@ -13,8 +13,10 @@ import {
   UserX,
   Clock,
   Target,
+  Share2,
 } from 'lucide-react';
 import { AnnotatorResponse } from '../types';
+import { ExportModal } from '../components/ExportModal';
 
 interface AnnotatorsPageProps {
   data: AnnotatorResponse | null;
@@ -34,6 +36,7 @@ export const AnnotatorsPage: React.FC<AnnotatorsPageProps> = ({
   onSelectStatusFilter,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [isExportOpen, setIsExportOpen] = useState(false);
 
   const podFilters = [
     { id: 'all', label: 'All Pods' },
@@ -238,24 +241,36 @@ export const AnnotatorsPage: React.FC<AnnotatorsPageProps> = ({
           </button>
         </div>
 
-        {/* Search Input Bar */}
-        <div className="relative flex-1 sm:max-w-xs">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={`Search annotator...`}
-            className="w-full px-4 py-2 pl-9 rounded-xl bg-[#191F30] border border-[#2A3650] focus:border-[#9DDB00] text-xs text-[#F4F6FB] placeholder-[#9CA8BD]/50 focus:outline-none transition-colors"
-          />
-          <Search className="w-3.5 h-3.5 text-[#9CA8BD] absolute left-3 top-2.5" />
-          {searchQuery && (
-            <button
-              onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-2 text-[10px] text-[#9CA8BD] hover:text-[#F4F6FB]"
-            >
-              Clear
-            </button>
-          )}
+        {/* Export & Search Controls */}
+        <div className="flex items-center space-x-2 flex-1 sm:max-w-md justify-end">
+          <button
+            onClick={() => setIsExportOpen(true)}
+            className="px-3 py-2 rounded-xl bg-[#20283D] hover:bg-[#2A3650] text-[#9DDB00] border border-[#2A3650] hover:border-[#9DDB00]/40 text-xs font-semibold flex items-center space-x-1.5 transition-all shadow-sm whitespace-nowrap"
+            title="Export target completion for chat groups, Slack, Sheets or CSV"
+          >
+            <Share2 className="w-3.5 h-3.5" />
+            <span>Export Target</span>
+          </button>
+
+          {/* Search Input Bar */}
+          <div className="relative flex-1 sm:max-w-xs">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={`Search annotator...`}
+              className="w-full px-4 py-2 pl-9 rounded-xl bg-[#191F30] border border-[#2A3650] focus:border-[#9DDB00] text-xs text-[#F4F6FB] placeholder-[#9CA8BD]/50 focus:outline-none transition-colors"
+            />
+            <Search className="w-3.5 h-3.5 text-[#9CA8BD] absolute left-3 top-2.5" />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-2 text-[10px] text-[#9CA8BD] hover:text-[#F4F6FB]"
+              >
+                Clear
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -378,6 +393,18 @@ export const AnnotatorsPage: React.FC<AnnotatorsPageProps> = ({
           </span>
         </div>
       </div>
+
+      {/* Export Target Production Modal */}
+      <ExportModal
+        isOpen={isExportOpen}
+        onClose={() => setIsExportOpen(false)}
+        date={data.date}
+        humanDate={data.humanDate}
+        podName={activeFilterName}
+        annotators={data.annotators || []}
+        totalTasks={data.podTotalTasks || 0}
+        totalMinutes={totalMinutes || 0}
+      />
     </div>
   );
 };
