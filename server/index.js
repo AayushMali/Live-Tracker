@@ -39,11 +39,12 @@ async function loadProductionData(force = false) {
     try {
       console.log('📡 Fetching live data from Google Apps Script Bridge...');
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 12000);
+      const timeoutId = setTimeout(() => controller.abort(), 25000);
 
       const resp = await fetch(appsScriptUrl, {
         method: 'GET',
         headers: { 'Accept': 'application/json' },
+        redirect: 'follow',
         signal: controller.signal
       });
       clearTimeout(timeoutId);
