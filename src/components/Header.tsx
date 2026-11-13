@@ -54,10 +54,12 @@ export const Header: React.FC<HeaderProps> = ({
     return `${Math.floor(diffMin / 60)}h ago`;
   };
 
+  const allTimeDateItem = dates.find((d) => d.isAllTime);
+  const dailyDateItems = dates.filter((d) => !d.isAllTime);
   const isViewingAllTime = selectedDate === 'all';
-  const latestDateItem = dates.find((d) => !d.isAllTime);
+  const latestDateItem = dailyDateItems[0];
   const isViewingLatest = dates.length > 0 && !isViewingAllTime && (selectedDate === latestDateItem?.date || !selectedDate);
-  const selectedDateObj = dates.find((d) => d.date === selectedDate) || (isViewingAllTime ? dates.find(d => d.isAllTime) : latestDateItem) || dates[0];
+  const selectedDateObj = dates.find((d) => d.date === selectedDate) || (isViewingAllTime ? allTimeDateItem : latestDateItem) || dates[0];
   const formattedSelectedDate = selectedDateObj ? selectedDateObj.humanDate : selectedDate || 'Latest Date';
 
   return (
@@ -77,7 +79,7 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="relative">
             <button
               onClick={() => setIsDateDropdownOpen(!isDateDropdownOpen)}
-              className="flex items-center space-x-2.5 px-3.5 py-2 rounded-lg bg-[#20283D] border border-[#2A3650] hover:border-[#9DDB00]/50 text-sm font-medium text-[#F4F6FB] transition-colors focus:outline-none"
+              className="flex items-center space-x-2.5 px-3.5 py-2 rounded-lg bg-[#20283D] border border-[#2A3650] hover:border-[#9DDB00]/50 text-sm font-medium text-[#F4F6FB] transition-colors focus:outline-none whitespace-nowrap"
             >
               <Calendar className="w-4 h-4 text-[#9DDB00]" />
               <span className="font-semibold">{formattedSelectedDate}</span>
@@ -106,13 +108,52 @@ export const Header: React.FC<HeaderProps> = ({
                   className="fixed inset-0 z-40"
                   onClick={() => setIsDateDropdownOpen(false)}
                 />
-                <div className="absolute left-0 mt-2 w-72 max-h-80 overflow-y-auto bg-[#191F30] border border-[#2A3650] rounded-xl shadow-2xl z-50 py-1.5 divide-y divide-[#2A3650]/50">
-                  <div className="px-3 py-2 text-[11px] font-semibold tracking-wider text-[#9CA8BD] uppercase">
-                    Select Production Date
-                  </div>
-                  <div className="py-1">
-                    {dates.map((d) => {
-                      const isLatest = !d.isAllTime && d.date === latestDateItem?.date;
+                <div className="absolute left-0 mt-2 w-[390px] sm:w-[430px] max-h-96 overflow-y-auto bg-[#191F30] border border-[#2A3650] rounded-2xl shadow-2xl z-50 p-2 divide-y divide-[#2A3650]/60 backdrop-blur-xl">
+                  {/* Cumulative All-Time Section */}
+                  {allTimeDateItem && (
+                    <div className="pb-2">
+                      <div className="px-3 py-1.5 text-[10px] font-bold tracking-wider text-[#9CA8BD] uppercase">
+                        Cumulative Summary
+                      </div>
+                      <button
+                        onClick={() => {
+                          onDateChange(allTimeDateItem.date);
+                          setIsDateDropdownOpen(false);
+                        }}
+                        className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs text-left transition-all ${
+                          allTimeDateItem.date === selectedDate
+                            ? 'bg-[#20283D] text-[#5689FF] border border-[#5689FF]/40 shadow-sm'
+                            : 'text-[#9CA8BD] hover:text-[#F4F6FB] hover:bg-[#20283D]/60'
+                        }`}
+                      >
+                        <div className="min-w-0 pr-3">
+                          <div className="font-semibold text-sm text-[#F4F6FB] flex items-center space-x-2 whitespace-nowrap">
+                            <span>{allTimeDateItem.humanDate}</span>
+                            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#5689FF]/20 text-[#5689FF] border border-[#5689FF]/30 font-semibold">
+                              All-Time
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-[#9CA8BD] mt-0.5 truncate">
+                            Overall project output across all dates in sheet
+                          </div>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-lg bg-[#5689FF]/15 text-[#5689FF] border border-[#5689FF]/30 whitespace-nowrap">
+                            {allTimeDateItem.grandTotal.toLocaleString()} tasks
+                          </span>
+                        </div>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Daily Dates Section */}
+                  <div className="pt-2 space-y-1">
+                    <div className="px-3 py-1.5 text-[10px] font-bold tracking-wider text-[#9CA8BD] uppercase">
+                      Daily Production Logs
+                    </div>
+                    {dailyDateItems.map((d) => {
+                      const isLatest = d.date === latestDateItem?.date;
+                      const isSelected = d.date === selectedDate;
                       return (
                         <button
                           key={d.date}
@@ -120,37 +161,30 @@ export const Header: React.FC<HeaderProps> = ({
                             onDateChange(d.date);
                             setIsDateDropdownOpen(false);
                           }}
-                          className={`w-full flex items-center justify-between px-3 py-2.5 text-xs text-left transition-colors ${
-                            d.date === selectedDate
-                              ? 'bg-[#20283D] text-[#9DDB00] font-semibold'
-                              : 'text-[#9CA8BD] hover:text-[#F4F6FB] hover:bg-[#20283D]/60'
+                          className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs text-left transition-all ${
+                            isSelected
+                              ? 'bg-[#20283D] text-[#9DDB00] font-semibold border border-[#9DDB00]/30 shadow-sm'
+                              : 'text-[#9CA8BD] hover:text-[#F4F6FB] hover:bg-[#20283D]/50'
                           }`}
                         >
-                          <div>
-                            <div className="font-medium text-[#F4F6FB] flex items-center space-x-1.5">
+                          <div className="min-w-0 pr-2">
+                            <div className="font-medium text-[#F4F6FB] flex items-center space-x-2 whitespace-nowrap">
                               <span>{d.humanDate}</span>
-                              {d.isAllTime && (
-                                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#5689FF]/20 text-[#5689FF] border border-[#5689FF]/30 font-semibold">
-                                  All-Time Total
-                                </span>
-                              )}
                               {isLatest && (
                                 <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#9DDB00]/20 text-[#9DDB00] border border-[#9DDB00]/30 font-semibold">
                                   Latest
                                 </span>
                               )}
                             </div>
-                            <div className="text-[10px] text-[#9CA8BD] font-mono mt-0.5">
-                              {d.isAllTime ? 'Total across all dates in sheet' : `${d.date} • ${d.activePods} active pods`}
+                            <div className="text-[11px] text-[#9CA8BD] font-mono mt-0.5">
+                              {d.date} • {d.activePods} active pods
                             </div>
                           </div>
-                          <div className="text-right">
+                          <div className="text-right flex-shrink-0">
                             <span
-                              className={`font-mono text-xs font-semibold px-2 py-0.5 rounded ${
+                              className={`font-mono text-xs font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap ${
                                 d.grandTotal > 0
-                                  ? d.isAllTime
-                                    ? 'bg-[#5689FF]/15 text-[#5689FF] border border-[#5689FF]/30'
-                                    : 'bg-[#9DDB00]/10 text-[#9DDB00] border border-[#9DDB00]/20'
+                                  ? 'bg-[#9DDB00]/10 text-[#9DDB00] border border-[#9DDB00]/20'
                                   : 'bg-[#20283D] text-[#9CA8BD]'
                               }`}
                             >

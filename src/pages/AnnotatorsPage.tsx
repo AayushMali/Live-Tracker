@@ -290,13 +290,13 @@ export const AnnotatorsPage: React.FC<AnnotatorsPageProps> = ({
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-[#2A3650] bg-[#191F30]/80 text-[11px] font-semibold text-[#9CA8BD] uppercase tracking-wider">
-                <th className="py-3.5 px-5">#</th>
-                <th className="py-3.5 px-5">Annotator Name</th>
-                <th className="py-3.5 px-5">Pod</th>
-                <th className="py-3.5 px-5 text-right">{data.isAllTime ? 'Total Tasks' : 'Tasks Today'}</th>
-                <th className="py-3.5 px-5 text-right">{data.isAllTime ? 'Total Minutes' : 'Minutes Today'}</th>
-                <th className="py-3.5 px-5 text-right">All-Time Output</th>
-                <th className="py-3.5 px-5 text-right">{data.isAllTime ? 'Days Active' : 'Daily Target (100 min)'}</th>
+                <th className="py-3.5 px-5 whitespace-nowrap">#</th>
+                <th className="py-3.5 px-5 whitespace-nowrap">Annotator Name</th>
+                <th className="py-3.5 px-5 whitespace-nowrap">Pod</th>
+                <th className="py-3.5 px-5 text-right whitespace-nowrap">{data.isAllTime ? 'Total Tasks' : 'Tasks Today'}</th>
+                <th className="py-3.5 px-5 text-right whitespace-nowrap">{data.isAllTime ? 'Total Minutes' : 'Minutes Today'}</th>
+                <th className="py-3.5 px-5 text-right whitespace-nowrap">All-Time Output</th>
+                <th className="py-3.5 px-5 text-right whitespace-nowrap">{data.isAllTime ? 'Days Active' : 'Daily Target (100 min)'}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#2A3650]/40 text-sm">

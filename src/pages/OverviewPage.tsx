@@ -258,14 +258,15 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({
                         <span className="text-[10px] text-[#5689FF]/80 font-sans">mins</span>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between text-[11px] text-[#9CA8BD]">
+                    <div className="flex items-center justify-between text-[11px] text-[#9CA8BD] pt-1">
                       <span>
                         <strong className="text-[#F4F6FB] font-semibold">{pod.activeAnnotators}</strong>{' '}
                         active
                       </span>
                       {pod.allTimeTotalTasks !== undefined && !overview.isAllTime && (
-                        <span className="font-mono text-[10px] text-[#9CA8BD]">
+                        <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-[#191F30] border border-[#2A3650] text-[#9CA8BD]">
                           All-Time: <strong className="text-[#F4F6FB]">{pod.allTimeTotalTasks.toLocaleString()}t</strong>
+                          {pod.allTimeTotalMinutes ? ` • ${(pod.allTimeTotalMinutes || 0).toLocaleString()}m` : ''}
                         </span>
                       )}
                     </div>
