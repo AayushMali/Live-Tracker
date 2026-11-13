@@ -16,7 +16,7 @@ import { AlertCircle, RefreshCw } from 'lucide-react';
 
 export const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<'overview' | 'annotators' | 'daily'>('overview');
-  const [selectedDate, setSelectedDate] = useState<string>('2026-11-12');
+  const [selectedDate, setSelectedDate] = useState<string>('');
   const [dates, setDates] = useState<DateItem[]>([]);
   const [selectedPodFilter, setSelectedPodFilter] = useState<string>('all');
   const [annotatorStatusFilter, setAnnotatorStatusFilter] = useState<'active' | 'zero' | 'all'>('active');
@@ -40,7 +40,7 @@ export const App: React.FC = () => {
     return !!localStorage.getItem('ax_prod_auth_token');
   });
 
-  // Fetch available dates
+  // Fetch available dates and return latest date
   const fetchDates = useCallback(async () => {
     try {
       const res = await fetch('/api/dates');
@@ -48,20 +48,20 @@ export const App: React.FC = () => {
       const json = await res.json();
       if (json && json.dates) {
         setDates(json.dates);
-        if (json.latestDate && !selectedDate) {
-          setSelectedDate(json.latestDate);
-        }
         if (json.lastUpdated) {
           setLastUpdated(json.lastUpdated);
         }
         if (json.dataSourceMode) {
           setDataSourceMode(json.dataSourceMode);
         }
+        const latest = json.latestDate || (json.dates[0] ? json.dates[0].date : '');
+        return latest;
       }
     } catch (err: any) {
       console.warn('Failed to fetch dates:', err.message);
     }
-  }, [selectedDate]);
+    return '';
+  }, []);
 
   // Fetch data for Overview Page
   const fetchOverview = useCallback(async (date: string) => {
@@ -111,13 +111,28 @@ export const App: React.FC = () => {
     let mounted = true;
     const loadCurrent = async () => {
       setIsLoading(true);
-      await fetchDates();
+      let activeDate = selectedDate;
+      if (!activeDate) {
+        const latest = await fetchDates();
+        if (latest) {
+          activeDate = latest;
+          setSelectedDate(latest);
+        }
+      } else {
+        await fetchDates();
+      }
+
+      if (!activeDate) {
+        if (mounted) setIsLoading(false);
+        return;
+      }
+
       if (currentPage === 'overview') {
-        await fetchOverview(selectedDate);
+        await fetchOverview(activeDate);
       } else if (currentPage === 'annotators') {
-        await fetchAnnotators(selectedDate, selectedPodFilter, annotatorStatusFilter);
+        await fetchAnnotators(activeDate, selectedPodFilter, annotatorStatusFilter);
       } else if (currentPage === 'daily') {
-        await fetchDaily(selectedDate);
+        await fetchDaily(activeDate);
       }
       if (mounted) setIsLoading(false);
     };
@@ -143,13 +158,14 @@ export const App: React.FC = () => {
     if (isManual) setIsRefreshing(true);
     try {
       await fetch('/api/refresh', { method: 'POST' });
-      await fetchDates();
+      const latest = await fetchDates();
+      const activeDate = selectedDate || latest;
       if (currentPage === 'overview') {
-        await fetchOverview(selectedDate);
+        await fetchOverview(activeDate);
       } else if (currentPage === 'annotators') {
-        await fetchAnnotators(selectedDate, selectedPodFilter, annotatorStatusFilter);
+        await fetchAnnotators(activeDate, selectedPodFilter, annotatorStatusFilter);
       } else if (currentPage === 'daily') {
-        await fetchDaily(selectedDate);
+        await fetchDaily(activeDate);
       }
     } catch (err: any) {
       console.error('Refresh failed:', err.message);

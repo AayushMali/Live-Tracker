@@ -54,8 +54,9 @@ export const Header: React.FC<HeaderProps> = ({
     return `${Math.floor(diffMin / 60)}h ago`;
   };
 
-  const selectedDateObj = dates.find((d) => d.date === selectedDate);
-  const formattedSelectedDate = selectedDateObj ? selectedDateObj.humanDate : selectedDate;
+  const isViewingLatest = dates.length > 0 && (selectedDate === dates[0]?.date || !selectedDate);
+  const selectedDateObj = dates.find((d) => d.date === selectedDate) || dates[0];
+  const formattedSelectedDate = selectedDateObj ? selectedDateObj.humanDate : selectedDate || 'Latest Date';
 
   return (
     <header className="sticky top-0 z-30 bg-[#111522]/90 backdrop-blur-md border-b border-[#2A3650] px-4 lg:px-8 py-3.5">
@@ -78,6 +79,11 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Calendar className="w-4 h-4 text-[#9DDB00]" />
               <span className="font-semibold">{formattedSelectedDate}</span>
+              {isViewingLatest && (
+                <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-[#9DDB00]/20 text-[#9DDB00] border border-[#9DDB00]/30 font-bold">
+                  Latest
+                </span>
+              )}
               {selectedDateObj && (
                 <span className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-[#9DDB00]/10 text-[#9DDB00] border border-[#9DDB00]/20">
                   {selectedDateObj.grandTotal} tasks
@@ -98,7 +104,7 @@ export const Header: React.FC<HeaderProps> = ({
                     Select Production Date
                   </div>
                   <div className="py-1">
-                    {dates.map((d) => (
+                    {dates.map((d, idx) => (
                       <button
                         key={d.date}
                         onClick={() => {
@@ -112,7 +118,14 @@ export const Header: React.FC<HeaderProps> = ({
                         }`}
                       >
                         <div>
-                          <div className="font-medium text-[#F4F6FB]">{d.humanDate}</div>
+                          <div className="font-medium text-[#F4F6FB] flex items-center space-x-1.5">
+                            <span>{d.humanDate}</span>
+                            {idx === 0 && (
+                              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#9DDB00]/20 text-[#9DDB00] border border-[#9DDB00]/30 font-semibold">
+                                Latest
+                              </span>
+                            )}
+                          </div>
                           <div className="text-[10px] text-[#9CA8BD] font-mono mt-0.5">
                             {d.date} • {d.activePods} active pods
                           </div>
