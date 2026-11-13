@@ -110,7 +110,7 @@ export const AnnotatorsPage: React.FC<AnnotatorsPageProps> = ({
         <div className="p-4 rounded-xl bg-[#20283D] border border-[#2A3650] flex items-center justify-between">
           <div>
             <div className="text-[11px] font-semibold text-[#9CA8BD] uppercase tracking-wider">
-              {activeFilterName} Total Tasks
+              {activeFilterName} {data.isAllTime ? 'All-Time Tasks' : 'Total Tasks'}
             </div>
             <div className="mt-1 flex items-baseline space-x-2">
               <span className="font-mono text-3xl font-extrabold text-[#9DDB00]">
@@ -118,6 +118,11 @@ export const AnnotatorsPage: React.FC<AnnotatorsPageProps> = ({
               </span>
               <span className="text-xs text-[#9CA8BD]">tasks</span>
             </div>
+            {data.allTimePodTotalTasks !== undefined && !data.isAllTime && (
+              <div className="mt-1.5 pt-1.5 border-t border-[#2A3650]/50 text-[10px] font-mono text-[#9CA8BD]">
+                All-Time: <span className="text-[#F4F6FB] font-semibold">{data.allTimePodTotalTasks.toLocaleString()}</span> tasks
+              </div>
+            )}
           </div>
           <div className="w-10 h-10 rounded-xl bg-[#9DDB00]/10 border border-[#9DDB00]/20 flex items-center justify-center">
             <span className="font-mono font-bold text-xs text-[#9DDB00]">
@@ -130,7 +135,7 @@ export const AnnotatorsPage: React.FC<AnnotatorsPageProps> = ({
         <div className="p-4 rounded-xl bg-[#20283D] border border-[#2A3650] flex items-center justify-between">
           <div>
             <div className="text-[11px] font-semibold text-[#9CA8BD] uppercase tracking-wider">
-              Total Minutes Logged
+              {data.isAllTime ? 'All-Time Minutes' : 'Total Minutes Logged'}
             </div>
             <div className="mt-1 flex items-baseline space-x-2">
               <span className="font-mono text-3xl font-extrabold text-[#5689FF]">
@@ -138,6 +143,11 @@ export const AnnotatorsPage: React.FC<AnnotatorsPageProps> = ({
               </span>
               <span className="text-xs text-[#9CA8BD]">mins</span>
             </div>
+            {data.allTimePodTotalMinutes !== undefined && !data.isAllTime && (
+              <div className="mt-1.5 pt-1.5 border-t border-[#2A3650]/50 text-[10px] font-mono text-[#9CA8BD]">
+                All-Time: <span className="text-[#5689FF] font-semibold">{data.allTimePodTotalMinutes.toLocaleString()}</span> mins
+              </div>
+            )}
           </div>
           <div className="w-10 h-10 rounded-xl bg-[#5689FF]/10 border border-[#5689FF]/20 flex items-center justify-center">
             <Clock className="w-5 h-5 text-[#5689FF]" />
@@ -283,9 +293,10 @@ export const AnnotatorsPage: React.FC<AnnotatorsPageProps> = ({
                 <th className="py-3.5 px-5">#</th>
                 <th className="py-3.5 px-5">Annotator Name</th>
                 <th className="py-3.5 px-5">Pod</th>
-                <th className="py-3.5 px-5 text-right">Tasks Completed</th>
-                <th className="py-3.5 px-5 text-right">Minutes Worked</th>
-                <th className="py-3.5 px-5 text-right">Daily Target (100 min)</th>
+                <th className="py-3.5 px-5 text-right">{data.isAllTime ? 'Total Tasks' : 'Tasks Today'}</th>
+                <th className="py-3.5 px-5 text-right">{data.isAllTime ? 'Total Minutes' : 'Minutes Today'}</th>
+                <th className="py-3.5 px-5 text-right">All-Time Output</th>
+                <th className="py-3.5 px-5 text-right">{data.isAllTime ? 'Days Active' : 'Daily Target (100 min)'}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#2A3650]/40 text-sm">
@@ -341,35 +352,53 @@ export const AnnotatorsPage: React.FC<AnnotatorsPageProps> = ({
                         )}
                       </td>
 
-                      {/* Daily Target Progress (100 min) */}
+                      {/* All-Time Cumulative Output */}
                       <td className="py-3.5 px-5 text-right">
-                        <div className="flex items-center justify-end space-x-2.5">
-                          <div className="w-24 h-1.5 bg-[#191F30] rounded-full overflow-hidden hidden sm:block">
-                            <div
-                              className={`h-full rounded-full transition-all duration-300 ${
-                                targetMet ? 'bg-[#9DDB00]' : 'bg-[#5689FF]'
-                              }`}
-                              style={{ width: `${progressPct}%` }}
-                            />
+                        <div>
+                          <span className="font-mono text-xs font-semibold text-[#F4F6FB]">
+                            {(ann.totalTasksAllTime ?? ann.tasksCompleted).toLocaleString()} tasks
+                          </span>
+                          <div className="text-[10px] font-mono text-[#9CA8BD]">
+                            {(ann.totalMinutesAllTime ?? minutes).toLocaleString()}m • {ann.daysWorked ?? (ann.tasksCompleted > 0 ? 1 : 0)}d worked
                           </div>
-                          {targetMet ? (
-                            <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-[#9DDB00]/10 text-[#9DDB00] border border-[#9DDB00]/30 whitespace-nowrap">
-                              <CheckCircle2 className="w-3 h-3" />
-                              <span>{minutes}m (Target Met)</span>
-                            </span>
-                          ) : (
-                            <span className="font-mono text-xs text-[#9CA8BD]">
-                              {minutes}/100m
-                            </span>
-                          )}
                         </div>
+                      </td>
+
+                      {/* Daily Target Progress / Days Active */}
+                      <td className="py-3.5 px-5 text-right">
+                        {data.isAllTime ? (
+                          <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded text-[11px] font-mono font-semibold bg-[#20283D] text-[#9DDB00] border border-[#2A3650]">
+                            <span>{ann.daysWorked ?? (ann.tasksCompleted > 0 ? 1 : 0)} days active</span>
+                          </span>
+                        ) : (
+                          <div className="flex items-center justify-end space-x-2.5">
+                            <div className="w-24 h-1.5 bg-[#191F30] rounded-full overflow-hidden hidden sm:block">
+                              <div
+                                className={`h-full rounded-full transition-all duration-300 ${
+                                  targetMet ? 'bg-[#9DDB00]' : 'bg-[#5689FF]'
+                                }`}
+                                style={{ width: `${progressPct}%` }}
+                              />
+                            </div>
+                            {targetMet ? (
+                              <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-[#9DDB00]/10 text-[#9DDB00] border border-[#9DDB00]/30 whitespace-nowrap">
+                                <CheckCircle2 className="w-3 h-3" />
+                                <span>{minutes}m (Met)</span>
+                              </span>
+                            ) : (
+                              <span className="font-mono text-xs text-[#9CA8BD]">
+                                {minutes}/100m
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </td>
                     </tr>
                   );
                 })
               ) : (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-xs text-[#9CA8BD]">
+                  <td colSpan={7} className="py-12 text-center text-xs text-[#9CA8BD]">
                     {searchQuery
                       ? `No annotators found matching "${searchQuery}" in ${activeFilterName}`
                       : statusFilter === 'zero'

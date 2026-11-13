@@ -54,8 +54,10 @@ export const Header: React.FC<HeaderProps> = ({
     return `${Math.floor(diffMin / 60)}h ago`;
   };
 
-  const isViewingLatest = dates.length > 0 && (selectedDate === dates[0]?.date || !selectedDate);
-  const selectedDateObj = dates.find((d) => d.date === selectedDate) || dates[0];
+  const isViewingAllTime = selectedDate === 'all';
+  const latestDateItem = dates.find((d) => !d.isAllTime);
+  const isViewingLatest = dates.length > 0 && !isViewingAllTime && (selectedDate === latestDateItem?.date || !selectedDate);
+  const selectedDateObj = dates.find((d) => d.date === selectedDate) || (isViewingAllTime ? dates.find(d => d.isAllTime) : latestDateItem) || dates[0];
   const formattedSelectedDate = selectedDateObj ? selectedDateObj.humanDate : selectedDate || 'Latest Date';
 
   return (
@@ -84,9 +86,14 @@ export const Header: React.FC<HeaderProps> = ({
                   Latest
                 </span>
               )}
+              {isViewingAllTime && (
+                <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-[#5689FF]/20 text-[#5689FF] border border-[#5689FF]/30 font-bold">
+                  All-Time
+                </span>
+              )}
               {selectedDateObj && (
                 <span className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-[#9DDB00]/10 text-[#9DDB00] border border-[#9DDB00]/20">
-                  {selectedDateObj.grandTotal} tasks
+                  {selectedDateObj.grandTotal.toLocaleString()} tasks
                 </span>
               )}
               <ChevronDown className="w-4 h-4 text-[#9CA8BD]" />
@@ -104,45 +111,55 @@ export const Header: React.FC<HeaderProps> = ({
                     Select Production Date
                   </div>
                   <div className="py-1">
-                    {dates.map((d, idx) => (
-                      <button
-                        key={d.date}
-                        onClick={() => {
-                          onDateChange(d.date);
-                          setIsDateDropdownOpen(false);
-                        }}
-                        className={`w-full flex items-center justify-between px-3 py-2.5 text-xs text-left transition-colors ${
-                          d.date === selectedDate
-                            ? 'bg-[#20283D] text-[#9DDB00] font-semibold'
-                            : 'text-[#9CA8BD] hover:text-[#F4F6FB] hover:bg-[#20283D]/60'
-                        }`}
-                      >
-                        <div>
-                          <div className="font-medium text-[#F4F6FB] flex items-center space-x-1.5">
-                            <span>{d.humanDate}</span>
-                            {idx === 0 && (
-                              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#9DDB00]/20 text-[#9DDB00] border border-[#9DDB00]/30 font-semibold">
-                                Latest
-                              </span>
-                            )}
+                    {dates.map((d) => {
+                      const isLatest = !d.isAllTime && d.date === latestDateItem?.date;
+                      return (
+                        <button
+                          key={d.date}
+                          onClick={() => {
+                            onDateChange(d.date);
+                            setIsDateDropdownOpen(false);
+                          }}
+                          className={`w-full flex items-center justify-between px-3 py-2.5 text-xs text-left transition-colors ${
+                            d.date === selectedDate
+                              ? 'bg-[#20283D] text-[#9DDB00] font-semibold'
+                              : 'text-[#9CA8BD] hover:text-[#F4F6FB] hover:bg-[#20283D]/60'
+                          }`}
+                        >
+                          <div>
+                            <div className="font-medium text-[#F4F6FB] flex items-center space-x-1.5">
+                              <span>{d.humanDate}</span>
+                              {d.isAllTime && (
+                                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#5689FF]/20 text-[#5689FF] border border-[#5689FF]/30 font-semibold">
+                                  All-Time Total
+                                </span>
+                              )}
+                              {isLatest && (
+                                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#9DDB00]/20 text-[#9DDB00] border border-[#9DDB00]/30 font-semibold">
+                                  Latest
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[10px] text-[#9CA8BD] font-mono mt-0.5">
+                              {d.isAllTime ? 'Total across all dates in sheet' : `${d.date} • ${d.activePods} active pods`}
+                            </div>
                           </div>
-                          <div className="text-[10px] text-[#9CA8BD] font-mono mt-0.5">
-                            {d.date} • {d.activePods} active pods
+                          <div className="text-right">
+                            <span
+                              className={`font-mono text-xs font-semibold px-2 py-0.5 rounded ${
+                                d.grandTotal > 0
+                                  ? d.isAllTime
+                                    ? 'bg-[#5689FF]/15 text-[#5689FF] border border-[#5689FF]/30'
+                                    : 'bg-[#9DDB00]/10 text-[#9DDB00] border border-[#9DDB00]/20'
+                                  : 'bg-[#20283D] text-[#9CA8BD]'
+                              }`}
+                            >
+                              {d.grandTotal.toLocaleString()} tasks
+                            </span>
                           </div>
-                        </div>
-                        <div className="text-right">
-                          <span
-                            className={`font-mono text-xs font-semibold px-2 py-0.5 rounded ${
-                              d.grandTotal > 0
-                                ? 'bg-[#9DDB00]/10 text-[#9DDB00] border border-[#9DDB00]/20'
-                                : 'bg-[#20283D] text-[#9CA8BD]'
-                            }`}
-                          >
-                            {d.grandTotal} tasks
-                          </span>
-                        </div>
-                      </button>
-                    ))}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </>

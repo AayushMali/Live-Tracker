@@ -84,7 +84,7 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({
         {/* Metric 1: Total Tasks Completed */}
         <div className="p-5 rounded-2xl bg-[#20283D] border border-[#2A3650] relative overflow-hidden group hover:border-[#9DDB00]/40 transition-colors">
           <div className="flex items-center justify-between text-xs font-semibold text-[#9CA8BD] uppercase tracking-wider mb-2">
-            <span>Total Tasks</span>
+            <span>{overview.isAllTime ? 'All-Time Tasks' : 'Tasks Completed'}</span>
             <div className="w-8 h-8 rounded-lg bg-[#9DDB00]/10 flex items-center justify-center">
               <TrendingUp className="w-4 h-4 text-[#9DDB00]" />
             </div>
@@ -95,16 +95,23 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({
             </span>
             <span className="text-xs text-[#9CA8BD] font-medium">tasks</span>
           </div>
-          <div className="mt-3 flex items-center space-x-2 text-[11px] text-[#9CA8BD]">
-            <CheckCircle className="w-3.5 h-3.5 text-[#9DDB00]" />
-            <span>All 4 pods combined</span>
-          </div>
+          {overview.allTimeGrandTotal !== undefined && !overview.isAllTime ? (
+            <div className="mt-2.5 pt-2 border-t border-[#2A3650]/60 flex items-center justify-between text-[11px] font-mono">
+              <span className="text-[#9CA8BD]">All-Time Total:</span>
+              <span className="text-[#F4F6FB] font-semibold">{overview.allTimeGrandTotal.toLocaleString()} tasks</span>
+            </div>
+          ) : (
+            <div className="mt-3 flex items-center space-x-2 text-[11px] text-[#9CA8BD]">
+              <CheckCircle className="w-3.5 h-3.5 text-[#9DDB00]" />
+              <span>All 4 pods combined</span>
+            </div>
+          )}
         </div>
 
         {/* Metric 2: Total Minutes Logged */}
         <div className="p-5 rounded-2xl bg-[#20283D] border border-[#2A3650] relative overflow-hidden group hover:border-[#5689FF]/40 transition-colors">
           <div className="flex items-center justify-between text-xs font-semibold text-[#9CA8BD] uppercase tracking-wider mb-2">
-            <span>Video Minutes</span>
+            <span>{overview.isAllTime ? 'All-Time Minutes' : 'Video Minutes'}</span>
             <div className="w-8 h-8 rounded-lg bg-[#5689FF]/10 flex items-center justify-center">
               <Clock className="w-4 h-4 text-[#5689FF]" />
             </div>
@@ -115,10 +122,17 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({
             </span>
             <span className="text-xs text-[#9CA8BD] font-medium">mins</span>
           </div>
-          <div className="mt-3 flex items-center space-x-2 text-[11px] text-[#9CA8BD]">
-            <span className="w-2 h-2 rounded-full bg-[#5689FF]"></span>
-            <span>Target: 100m / annotator</span>
-          </div>
+          {overview.allTimeGrandTotalMinutes !== undefined && !overview.isAllTime ? (
+            <div className="mt-2.5 pt-2 border-t border-[#2A3650]/60 flex items-center justify-between text-[11px] font-mono">
+              <span className="text-[#9CA8BD]">All-Time Total:</span>
+              <span className="text-[#5689FF] font-semibold">{(overview.allTimeGrandTotalMinutes || 0).toLocaleString()} mins</span>
+            </div>
+          ) : (
+            <div className="mt-3 flex items-center space-x-2 text-[11px] text-[#9CA8BD]">
+              <span className="w-2 h-2 rounded-full bg-[#5689FF]"></span>
+              <span>Target: 100m / annotator</span>
+            </div>
+          )}
         </div>
 
         {/* Metric 3: Active Pods */}
@@ -244,10 +258,17 @@ export const OverviewPage: React.FC<OverviewPageProps> = ({
                         <span className="text-[10px] text-[#5689FF]/80 font-sans">mins</span>
                       </div>
                     </div>
-                    <p className="text-[11px] text-[#9CA8BD]">
-                      <strong className="text-[#F4F6FB] font-semibold">{pod.activeAnnotators}</strong>{' '}
-                      annotator{pod.activeAnnotators === 1 ? '' : 's'} active
-                    </p>
+                    <div className="flex items-center justify-between text-[11px] text-[#9CA8BD]">
+                      <span>
+                        <strong className="text-[#F4F6FB] font-semibold">{pod.activeAnnotators}</strong>{' '}
+                        active
+                      </span>
+                      {pod.allTimeTotalTasks !== undefined && !overview.isAllTime && (
+                        <span className="font-mono text-[10px] text-[#9CA8BD]">
+                          All-Time: <strong className="text-[#F4F6FB]">{pod.allTimeTotalTasks.toLocaleString()}t</strong>
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 

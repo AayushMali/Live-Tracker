@@ -67,7 +67,10 @@ export const ExportModal: React.FC<ExportModalProps> = ({
       lines.push(`✅ *TARGET MET (≥100 mins):*`);
       metList.forEach((a) => {
         const mins = a.minutesWorked || 0;
-        lines.push(`• *${a.name}* — ${a.tasksCompleted} tasks | ${mins} mins (${mins}% of target)`);
+        const allTasks = a.totalTasksAllTime ?? a.tasksCompleted;
+        const allMins = a.totalMinutesAllTime ?? mins;
+        const days = a.daysWorked ?? 1;
+        lines.push(`• *${a.name}* — ${a.tasksCompleted} tasks | ${mins}m today (All-time: ${allTasks}t, ${allMins}m, ${days}d)`);
       });
       lines.push(``);
     }
@@ -77,7 +80,10 @@ export const ExportModal: React.FC<ExportModalProps> = ({
       inProgressList.forEach((a) => {
         const mins = a.minutesWorked || 0;
         const pct = Math.min(Math.round((mins / 100) * 100), 100);
-        lines.push(`• *${a.name}* — ${a.tasksCompleted} tasks | ${mins} mins (${pct}% of target)`);
+        const allTasks = a.totalTasksAllTime ?? a.tasksCompleted;
+        const allMins = a.totalMinutesAllTime ?? mins;
+        const days = a.daysWorked ?? 1;
+        lines.push(`• *${a.name}* — ${a.tasksCompleted} tasks | ${mins}m (${pct}% of target) | All-time: ${allTasks}t, ${allMins}m`);
       });
     }
 
@@ -90,24 +96,30 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
   // 2. Generate TSV (Tab Separated Values - Best for pasting into Google Sheets/Excel)
   const generateTSVText = () => {
-    const headers = ['#', 'Annotator Name', 'Pod', 'Tasks Completed', 'Minutes Worked', 'Daily Target', 'Target Met', '% Completed'];
+    const headers = ['#', 'Annotator Name', 'Pod', 'Tasks Today', 'Minutes Today', 'All-Time Tasks', 'All-Time Minutes', 'Days Worked', 'Daily Target', 'Target Met', '% Completed'];
     const rows = scopedAnnotators.map((a, i) => {
       const mins = a.minutesWorked || 0;
       const met = mins >= 100 ? 'YES' : 'NO';
       const pct = `${Math.round((mins / 100) * 100)}%`;
-      return [i + 1, a.name, a.podName, a.tasksCompleted, mins, 100, met, pct].join('\t');
+      const allTasks = a.totalTasksAllTime ?? a.tasksCompleted;
+      const allMins = a.totalMinutesAllTime ?? mins;
+      const days = a.daysWorked ?? (a.tasksCompleted > 0 ? 1 : 0);
+      return [i + 1, a.name, a.podName, a.tasksCompleted, mins, allTasks, allMins, days, 100, met, pct].join('\t');
     });
     return [headers.join('\t'), ...rows].join('\n');
   };
 
   // 3. Generate CSV Text
   const generateCSVText = () => {
-    const headers = ['"Rank"', '"Annotator Name"', '"Pod"', '"Tasks Completed"', '"Minutes Worked"', '"Daily Target"', '"Target Met"', '"Percent Completed"'];
+    const headers = ['"Rank"', '"Annotator Name"', '"Pod"', '"Tasks Today"', '"Minutes Today"', '"All-Time Tasks"', '"All-Time Minutes"', '"Days Worked"', '"Daily Target"', '"Target Met"', '"Percent Completed"'];
     const rows = scopedAnnotators.map((a, i) => {
       const mins = a.minutesWorked || 0;
       const met = mins >= 100 ? 'YES' : 'NO';
       const pct = `${Math.round((mins / 100) * 100)}%`;
-      return [i + 1, `"${a.name}"`, `"${a.podName}"`, a.tasksCompleted, mins, 100, `"${met}"`, `"${pct}"`].join(',');
+      const allTasks = a.totalTasksAllTime ?? a.tasksCompleted;
+      const allMins = a.totalMinutesAllTime ?? mins;
+      const days = a.daysWorked ?? (a.tasksCompleted > 0 ? 1 : 0);
+      return [i + 1, `"${a.name}"`, `"${a.podName}"`, a.tasksCompleted, mins, allTasks, allMins, days, 100, `"${met}"`, `"${pct}"`].join(',');
     });
     return [headers.join(','), ...rows].join('\n');
   };

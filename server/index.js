@@ -222,6 +222,23 @@ app.get('/api/integrity', async (req, res) => {
 app.get('/api/dates', async (req, res) => {
   try {
     const data = await loadProductionData();
+    let allTimeGrandTotal = 0;
+    const allTimeAnnotatorsSet = new Set();
+
+    for (let p = 1; p <= 4; p++) {
+      const pod = data.pods[p];
+      if (!pod) continue;
+      for (const ann of pod.annotators || []) {
+        let annTotal = 0;
+        for (const d of Object.keys(ann.tasksByDate || {})) {
+          const t = ann.tasksByDate[d] || 0;
+          annTotal += t;
+        }
+        allTimeGrandTotal += annTotal;
+        if (annTotal > 0) allTimeAnnotatorsSet.add(ann.id || ann.name);
+      }
+    }
+
     const datesWithSummary = data.sortedDates.map(date => {
       let grandTotal = 0;
       let activeAnnotators = 0;
@@ -242,12 +259,25 @@ app.get('/api/dates', async (req, res) => {
         humanDate: formatHumanDate(date),
         grandTotal,
         activeAnnotators,
-        activePods
+        activePods,
+        isAllTime: false
       };
     });
 
+    const allDatesWithCumulative = [
+      {
+        date: 'all',
+        humanDate: 'All Dates (Project Total)',
+        grandTotal: allTimeGrandTotal,
+        activeAnnotators: allTimeAnnotatorsSet.size,
+        activePods: 4,
+        isAllTime: true
+      },
+      ...datesWithSummary
+    ];
+
     res.json({
-      dates: datesWithSummary,
+      dates: allDatesWithCumulative,
       latestDate: data.sortedDates[0] || null,
       lastUpdated: new Date(lastFetchedAt).toISOString(),
       dataSourceMode
@@ -264,6 +294,79 @@ app.get('/api/production', async (req, res) => {
   try {
     const data = await loadProductionData();
     const requestedDate = req.query.date || data.sortedDates[0];
+    const isAllTime = requestedDate === 'all' || requestedDate === 'cumulative';
+
+    // Compute all-time totals across all pods & annotators
+    let allTimeGrandTotal = 0;
+    let allTimeGrandTotalMinutes = 0;
+    const podAllTimeTotals = {};
+
+    for (let p = 1; p <= 4; p++) {
+      const pod = data.pods[p];
+      let pTasks = 0;
+      let pMins = 0;
+      if (pod) {
+        for (const ann of pod.annotators || []) {
+          for (const d of Object.keys(ann.tasksByDate || {})) {
+            pTasks += (ann.tasksByDate[d] || 0);
+            pMins += (ann.minutesByDate?.[d] || 0);
+          }
+        }
+      }
+      podAllTimeTotals[p] = { tasks: pTasks, minutes: pMins };
+      allTimeGrandTotal += pTasks;
+      allTimeGrandTotalMinutes += pMins;
+    }
+
+    if (isAllTime) {
+      let totalActiveAnnotators = 0;
+      const podSummaries = [];
+
+      for (let p = 1; p <= 4; p++) {
+        const pod = data.pods[p];
+        let pActive = 0;
+        for (const ann of pod?.annotators || []) {
+          const annTasks = Object.values(ann.tasksByDate || {}).reduce((a, b) => a + b, 0);
+          const annMins = Object.values(ann.minutesByDate || {}).reduce((a, b) => a + b, 0);
+          if (annTasks > 0 || annMins > 0) pActive++;
+        }
+        totalActiveAnnotators += pActive;
+        const pTasks = podAllTimeTotals[p]?.tasks || 0;
+        const pMins = podAllTimeTotals[p]?.minutes || 0;
+
+        podSummaries.push({
+          id: p,
+          name: pod ? pod.name : `Pod ${p}`,
+          sheetId: pod ? pod.sheetId : '',
+          totalTasks: pTasks,
+          sourceRow2Total: pTasks,
+          totalMinutes: pMins,
+          sourceRow2Minutes: pMins,
+          activeAnnotators: pActive,
+          totalAnnotators: pod?.annotators?.length || 0,
+          hasDiscrepancy: false,
+          allTimeTotalTasks: pTasks,
+          allTimeTotalMinutes: pMins
+        });
+      }
+
+      return res.json({
+        date: 'all',
+        humanDate: 'All Dates (Project Total)',
+        isAllTime: true,
+        grandTotal: allTimeGrandTotal,
+        grandTotalMinutes: allTimeGrandTotalMinutes,
+        allTimeGrandTotal,
+        allTimeGrandTotalMinutes,
+        activePods: 4,
+        totalPods: 4,
+        activeAnnotators: totalActiveAnnotators,
+        pods: podSummaries,
+        discrepancies: [],
+        lastUpdated: new Date(lastFetchedAt).toISOString(),
+        dataSourceMode
+      });
+    }
 
     let grandTotal = 0;
     let grandTotalMinutes = 0;
@@ -298,7 +401,9 @@ app.get('/api/production', async (req, res) => {
         sourceRow2Minutes: s.sourceRow2Minutes || 0,
         activeAnnotators: s.activeAnnotators,
         totalAnnotators: pod?.annotators?.length || 0,
-        hasDiscrepancy: s.hasDiscrepancy
+        hasDiscrepancy: s.hasDiscrepancy,
+        allTimeTotalTasks: podAllTimeTotals[p]?.tasks || 0,
+        allTimeTotalMinutes: podAllTimeTotals[p]?.minutes || 0
       });
     }
 
@@ -307,8 +412,11 @@ app.get('/api/production', async (req, res) => {
     res.json({
       date: requestedDate,
       humanDate: formatHumanDate(requestedDate),
+      isAllTime: false,
       grandTotal,
       grandTotalMinutes,
+      allTimeGrandTotal,
+      allTimeGrandTotalMinutes,
       activePods: activePodsCount,
       totalPods: 4,
       activeAnnotators: totalActiveAnnotators,
@@ -329,12 +437,15 @@ app.get('/api/annotators', async (req, res) => {
   try {
     const data = await loadProductionData();
     const requestedDate = req.query.date || data.sortedDates[0];
+    const isAllTime = requestedDate === 'all' || requestedDate === 'cumulative';
     const podFilter = req.query.pod || 'all'; // 'all', '1', '2', '3', '4'
     const statusFilter = req.query.status || (req.query.showAll === 'true' ? 'all' : 'active'); // 'active', 'zero', 'all'
 
     let annotators = [];
     let podTotalTasks = 0;
     let podTotalMinutes = 0;
+    let allTimePodTotalTasks = 0;
+    let allTimePodTotalMinutes = 0;
     let activeAnnotatorCount = 0;
     let totalMembersCount = 0;
 
@@ -348,8 +459,26 @@ app.get('/api/annotators', async (req, res) => {
 
       for (const ann of pod.annotators) {
         totalMembersCount++;
-        const tasks = ann.tasksByDate?.[requestedDate] || 0;
-        const minutes = ann.minutesByDate?.[requestedDate] || 0;
+
+        // Calculate all-time stats across all days
+        let totalTasksAllTime = 0;
+        let totalMinutesAllTime = 0;
+        let daysWorked = 0;
+
+        for (const d of Object.keys(ann.tasksByDate || {})) {
+          const t = ann.tasksByDate[d] || 0;
+          const m = ann.minutesByDate?.[d] || 0;
+          totalTasksAllTime += t;
+          totalMinutesAllTime += m;
+          if (t > 0 || m > 0) daysWorked++;
+        }
+
+        allTimePodTotalTasks += totalTasksAllTime;
+        allTimePodTotalMinutes += totalMinutesAllTime;
+
+        const tasks = isAllTime ? totalTasksAllTime : (ann.tasksByDate?.[requestedDate] || 0);
+        const minutes = isAllTime ? totalMinutesAllTime : (ann.minutesByDate?.[requestedDate] || 0);
+
         podTotalTasks += tasks;
         podTotalMinutes += minutes;
         if (tasks > 0 || minutes > 0) activeAnnotatorCount++;
@@ -368,7 +497,10 @@ app.get('/api/annotators', async (req, res) => {
             tasksCompleted: tasks,
             minutesWorked: minutes,
             dailyTargetMinutes: 100,
-            targetMet: minutes >= 100
+            targetMet: minutes >= 100,
+            totalTasksAllTime,
+            totalMinutesAllTime,
+            daysWorked
           });
         }
       }
@@ -389,11 +521,14 @@ app.get('/api/annotators', async (req, res) => {
 
     res.json({
       date: requestedDate,
-      humanDate: formatHumanDate(requestedDate),
+      humanDate: isAllTime ? 'All Dates (Project Total)' : formatHumanDate(requestedDate),
+      isAllTime,
       podFilter,
       statusFilter,
       podTotalTasks,
       podTotalMinutes,
+      allTimePodTotalTasks,
+      allTimePodTotalMinutes,
       dailyTargetMinutes: 100,
       totalMembers: totalMembersCount,
       activeAnnotators: activeAnnotatorCount,
@@ -414,6 +549,7 @@ app.get('/api/daily-production', async (req, res) => {
   try {
     const data = await loadProductionData();
     const requestedDate = req.query.date || data.sortedDates[0];
+    const isAllTime = requestedDate === 'all' || requestedDate === 'cumulative';
 
     const podsBreakdown = [];
     let grandTotal = 0;
@@ -424,36 +560,70 @@ app.get('/api/daily-production', async (req, res) => {
       const pod = data.pods[p];
       if (!pod) continue;
 
-      const summary = pod.summariesByDate?.[requestedDate] || { totalTasks: 0, totalMinutes: 0, activeAnnotators: 0, sourceRow2Total: 0, hasDiscrepancy: false };
-      grandTotal += summary.totalTasks;
-      grandTotalMinutes += (summary.totalMinutes || 0);
-      grandActiveAnnotators += summary.activeAnnotators;
+      if (isAllTime) {
+        let podTasks = 0;
+        let podMinutes = 0;
+        const annotators = pod.annotators
+          .map(a => {
+            const t = Object.values(a.tasksByDate || {}).reduce((s, v) => s + v, 0);
+            const m = Object.values(a.minutesByDate || {}).reduce((s, v) => s + v, 0);
+            return { name: a.name, tasks: t, minutes: m };
+          })
+          .filter(a => a.tasks > 0 || (a.minutes || 0) > 0)
+          .sort((a, b) => b.tasks - a.tasks || (b.minutes || 0) - (a.minutes || 0));
 
-      // Annotators who worked on this date
-      const annotators = pod.annotators
-        .map(a => ({
-          name: a.name,
-          tasks: a.tasksByDate?.[requestedDate] || 0,
-          minutes: a.minutesByDate?.[requestedDate] || 0
-        }))
-        .filter(a => a.tasks > 0 || a.minutes > 0)
-        .sort((a, b) => b.tasks - a.tasks || b.minutes - a.minutes);
+        for (const a of annotators) {
+          podTasks += a.tasks;
+          podMinutes += (a.minutes || 0);
+        }
 
-      podsBreakdown.push({
-        podId: pod.id,
-        podName: pod.name,
-        totalTasks: summary.totalTasks,
-        totalMinutes: summary.totalMinutes || 0,
-        sourceRow2Total: summary.sourceRow2Total,
-        hasDiscrepancy: summary.hasDiscrepancy,
-        activeAnnotators: summary.activeAnnotators,
-        annotators
-      });
+        grandTotal += podTasks;
+        grandTotalMinutes += podMinutes;
+        grandActiveAnnotators += annotators.length;
+
+        podsBreakdown.push({
+          podId: pod.id,
+          podName: pod.name,
+          totalTasks: podTasks,
+          totalMinutes: podMinutes,
+          sourceRow2Total: podTasks,
+          hasDiscrepancy: false,
+          activeAnnotators: annotators.length,
+          annotators
+        });
+      } else {
+        const summary = pod.summariesByDate?.[requestedDate] || { totalTasks: 0, totalMinutes: 0, activeAnnotators: 0, sourceRow2Total: 0, hasDiscrepancy: false };
+        grandTotal += summary.totalTasks;
+        grandTotalMinutes += (summary.totalMinutes || 0);
+        grandActiveAnnotators += summary.activeAnnotators;
+
+        // Annotators who worked on this date
+        const annotators = pod.annotators
+          .map(a => ({
+            name: a.name,
+            tasks: a.tasksByDate?.[requestedDate] || 0,
+            minutes: a.minutesByDate?.[requestedDate] || 0
+          }))
+          .filter(a => a.tasks > 0 || a.minutes > 0)
+          .sort((a, b) => b.tasks - a.tasks || b.minutes - a.minutes);
+
+        podsBreakdown.push({
+          podId: pod.id,
+          podName: pod.name,
+          totalTasks: summary.totalTasks,
+          totalMinutes: summary.totalMinutes || 0,
+          sourceRow2Total: summary.sourceRow2Total,
+          hasDiscrepancy: summary.hasDiscrepancy,
+          activeAnnotators: summary.activeAnnotators,
+          annotators
+        });
+      }
     }
 
     res.json({
       date: requestedDate,
-      humanDate: formatHumanDate(requestedDate),
+      humanDate: isAllTime ? 'All Dates (Project Total)' : formatHumanDate(requestedDate),
+      isAllTime,
       grandTotal,
       grandTotalMinutes,
       activePods: podsBreakdown.filter(p => p.totalTasks > 0 || p.totalMinutes > 0).length,
